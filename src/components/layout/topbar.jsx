@@ -1,42 +1,81 @@
-import React from 'react';
-import { Search, Settings, RefreshCw } from 'lucide-react';
 
-export function Topbar({ activePage }) {
+import React from 'react';
+import {
+  Search,
+  Settings,
+  Bell,
+  RefreshCw
+} from 'lucide-react';
+
+export function Topbar({ activePage, onOpenSettings }){
   return (
-    <header className="px-8 pt-6 pb-4 flex items-center justify-between bg-slate-950 border-b border-slate-900">
-      {/* Título e Subtítulo da Página */}
+    <header
+      className="flex flex-shrink-0 items-center justify-between px-6 py-4"
+      style={{ backgroundColor: '#070A15' }}
+    >
+      {/* Título e subtítulo */}
       <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">
+        <h1 className="text-xl font-bold tracking-tight text-[#C0C5C8]">
           {activePage}
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+
+        <p className="mt-1 text-xs text-[#9ca1a6]">
           Visão geral do sistema
         </p>
       </div>
 
-      {/* Ações da Direita */}
+      {/* Ações do lado direito */}
       <div className="flex items-center gap-3">
-        {/* Campo de Busca */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Busca */}
+        <div className="relative hidden sm:block">
+          <Search
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+            style={{ color: '#4A525B' }}
+          />
+
           <input
             type="text"
             placeholder="Buscar..."
-            className="bg-slate-900/80 text-slate-200 placeholder-slate-500 text-xs pl-9 pr-4 py-2 rounded-lg border border-slate-800 focus:outline-none focus:border-blue-500 transition-colors w-48"
+            className="w-48 rounded-lg border py-2 pl-9 pr-4 text-xs text-[#C0C5C8] outline-none transition-colors placeholder:text-[#4A525B] focus:border-[#2C57A8]"
+            style={{
+              backgroundColor: '#0C141F',
+              borderColor: '#17315F44',
+            }}
           />
         </div>
 
-        {/* Botão Configurações */}
-        <button className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg border border-slate-800 transition-colors">
-          <Settings className="w-4 h-4" />
+
+        {/* Configurações */}
+        <button
+          type="button"
+          aria-label="Configurações"
+          title="Configurações do sistema"
+          onClick={onOpenSettings}
+          className="rounded-lg border p-2 transition-colors hover:bg-[#111622]"
+          style={{
+            backgroundColor: '#0C141F',
+            borderColor: '#17315F44',
+            color: '#9ca1a6',
+          }}
+        >
+          <Settings size={15} />
         </button>
 
-        {/* Timestamp / Indicador de Atualização */}
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 pl-2">
-          <RefreshCw className="w-3 h-3 text-slate-500" />
-          <span>Atualizado às 10:28</span>
-        </div>
+
+        {/* Perfil */}
+        <button
+          type="button"
+          aria-label="Perfil do usuário"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white shadow-md"
+          style={{
+            background: 'linear-gradient(135deg, #2C57A8, #0B121E)',
+            boxShadow: '0 2px 12px rgba(44, 87, 168, 0.25)',
+          }}
+        >
+          WV
+        </button>
+
       </div>
     </header>
   );
-}       
+}

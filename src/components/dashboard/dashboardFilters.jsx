@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, RefreshCw } from 'lucide-react';
 
 const filters = [
   {
@@ -93,6 +93,12 @@ function DashboardFilters() {
           )}
         </div>
       ))}
+
+      {/* Timestamp / Indicador de Atualização */}
+      <div className="ml-auto flex items-center gap-1.5 pl-2 text-[11px] text-[#4A525B]">
+        <RefreshCw className="h-3 w-3" />
+        <span>Atualizado às 10:28</span>
+      </div>
     </div>
   );
 }

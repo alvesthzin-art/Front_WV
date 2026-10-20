@@ -3,23 +3,33 @@
 
 >>>>>>> b8e4666 (Atualiza projeto Font_WV)
 import React, { useState } from 'react';
+
+//Import das componentes Gerais
 import { Login } from './pages/login';
 import { Sidebar } from './components/layout/sidebar';
 import { Topbar } from './components/layout/topbar';
-<<<<<<< HEAD
-=======
 import Dashboard from './pages/dashboard';
+import { ConfiguracoesSistemaModal } from './components/dashboard/configuracoesSistemaModal';
+// Importe o modal aqui, usando o caminho real do seu projeto.
+// Exemplo:
+// import { ConfiguracoesSistemaModal } from './components/ConfiguracoesSistemaModal';
 >>>>>>> b8e4666 (Atualiza projeto Font_WV)
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activePage, setActivePage] = useState('Dashboard');
+  const [showConfigModal, setShowConfigModal] = useState(false);
 
   if (!isAuthenticated) {
-    return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
+    return (
+      <Login
+        onLoginSuccess={() => setIsAuthenticated(true)}
+      />
+    );
   }
 
   return (
+    <div className="flex min-h-screen bg-[#070A15] font-sans text-slate-100">
 <<<<<<< HEAD
     <div className="flex min-h-screen bg-slate-950 font-sans text-slate-100">
       <Sidebar activePage={activePage} setActivePage={setActivePage} />
@@ -49,11 +59,14 @@ export default function App() {
         <main className="flex-1 p-4 md:p-8">
           {activePage === 'Dashboard' ? (
             <Dashboard />
+          ) : activePage === 'Medições' ? (
+            <Medicao />
           ) : (
             <div className="rounded-card border border-slate-800 bg-slate-900 p-6">
               <h2 className="text-lg font-semibold text-white">
                 {activePage}
               </h2>
+
               <p className="mt-1 text-sm text-slate-400">
                 Esta seção do Watt Vision será implementada.
               </p>
@@ -66,6 +79,3 @@ export default function App() {
   );
 <<<<<<< HEAD
 }
-=======
-}
->>>>>>> b8e4666 (Atualiza projeto Font_WV)
