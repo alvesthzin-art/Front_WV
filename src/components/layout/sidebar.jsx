@@ -13,7 +13,7 @@ import {
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
-  { name: 'Equipamentos', icon: Cpu, path: '/equipamentos' },
+  { name: 'Operacional', icon: Cpu, path: '/operacional' },
   { name: 'Medições', icon: Activity, path: '/medicoes' },
   { name: 'Alarmes', icon: BellRing, path: '/alarmes' },
   { name: 'Conectividade', icon: Wifi, path: '/conectividade' },
