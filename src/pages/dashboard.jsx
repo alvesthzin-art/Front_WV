@@ -1,6 +1,6 @@
 import React from 'react';
 import StatCard from '../components/dashboard/statCard';
-import DashboardFilters from '../components/dashboard/DashboardFilters';
+import DashboardFilters from '../components/dashboard/dashboardFilters';
 import { summaryCards } from '../components/dashboard/dashboardData';
 import SystemPerformance from '../components/dashboard/systemPerformance';
 import RecentAlarms from '../components/dashboard/recentAlarms';
