@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { Login } from './pages/login';
 import { Sidebar } from './components/layout/sidebar';
 import { Topbar } from './components/layout/topbar';
+//import  ConfiguracoesSistemaModal  from '../src/components/configuracoes/configuracoesSistemaModal';
 import Dashboard from './pages/dashboard';
-import { ConfiguracoesSistemaModal } from './components/dashboard/configuracoesSistemaModal';
+import { ConfiguracoesSistemaModal } from './components/configuracoes/configuracoesSistemaModal';
 // Importe o modal aqui, usando o caminho real do seu projeto.
 // Exemplo:
 // import { ConfiguracoesSistemaModal } from './components/ConfiguracoesSistemaModal';
@@ -34,6 +35,12 @@ export default function App() {
           activePage={activePage}
           onOpenSettings={() => setShowConfigModal(true)}
         />
+        {/* Modal de configurações */}
+      {showConfigModal && (
+        <ConfiguracoesSistemaModal
+          onClose={() => setShowConfigModal(false)}
+        />
+      )}
 
         <main className="flex-1 bg-[#070A15] p-4 md:p-8">
           {activePage === 'Dashboard' ? (
@@ -52,12 +59,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Modal de configurações */}
-      {showConfigModal && (
-        <ConfiguracoesSistemaModal
-          onClose={() => setShowConfigModal(false)}
-        />
-      )}
+      
     </div>
   );
 }
