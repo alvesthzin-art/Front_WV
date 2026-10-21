@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { UsuariosSistema } from './usuarioSistema.jsx';
 import { TarifasSistema } from './tarifasSistema.jsx';
 import { GeralSistema } from './geralSistema.jsx';
+import { PontosMedicao } from './pontosMedicao.jsx';
 import {
   X,
   Settings,
@@ -658,29 +659,12 @@ export function ConfiguracoesSistemaModal({ onClose }) {
           |
           | Área reservada para o gerenciamento de Ponto de Medição e permissões.
           | Chama o import que tem o caminho da componente Ponto de Medição.
-          |
-          */}
+           */}
+          
+          {activeTab === 'pontos' && <PontosMedicao />}
+          </div>
 
-          {activeTab === 'pontos' && (
-            <section className="rounded-[18px] border border-[#26354B] bg-[#0D1521]">
-
-              <div className="border-b border-[#26354B]/70 px-5 py-4">
-                <h3 className="text-sm font-semibold">
-                  Pontos de Medição
-                </h3>
-
-                <p className="mt-1 text-xs text-[#647184]">
-                  Equipamentos associados e estado da medição
-                </p>
-              </div>
-
-              <div className="p-5 text-sm text-[#9ca1a6]">
-                Esta área poderá exibir os pontos de medição, os equipamentos
-                associados e o estado de comunicação.
-              </div>
-            </section>
-          )}
-        </div>
+         
 
         {/*
         |--------------------------------------------------------------------------
@@ -697,33 +681,32 @@ export function ConfiguracoesSistemaModal({ onClose }) {
         |
         */}
 
-        <footer className="flex shrink-0 flex-col-reverse gap-3 border-t border-[#26354B] bg-[#0D1523] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+         {activeTab !== 'pontos' && (
+          <footer className="flex shrink-0 flex-col-reverse gap-3 border-t border-[#26354B] bg-[#0D1523] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <button
+              type="button"
+              onClick={cancelChanges}
+              className="rounded-xl border border-[#24416D] px-4 py-2.5 text-xs font-semibold text-[#9CA7B7] transition hover:bg-[#111D30] hover:text-white"
+            >
+              Cancelar
+            </button>
 
-          {/* Descarta a edição atual e fecha o modal. */}
-          <button
-            type="button"
-            onClick={cancelChanges}
-            className="rounded-xl border border-[#24416D] px-4 py-2.5 text-xs font-semibold text-[#9CA7B7] transition hover:bg-[#111D30] hover:text-white"
-          >
-            Cancelar
-          </button>
-
-          {/* Atualiza o estado local e fecha o modal. */}
-          <button
-            type="button"
-            onClick={saveChanges}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[#2855A4] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#3568C4]"
-          >
-            <Save size={14} />
-            Salvar Alterações
-          </button>
-        </footer>
+            <button
+              type="button"
+              onClick={saveChanges}
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#2855A4] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#3568C4]"
+            >
+              <Save size={14} />
+              Salvar Alterações
+            </button>
+          </footer>
+        )}
       </section>
     </div>
   );
 }
 
-/*
+{/*
 |--------------------------------------------------------------------------
 | 15. EXPORTAÇÃO DO COMPONENTE
 |--------------------------------------------------------------------------
@@ -738,6 +721,6 @@ export function ConfiguracoesSistemaModal({ onClose }) {
 |
 | O projeto pode utilizar uma das formas, conforme o import existente.
 |
-*/
+*/}
 
 export default ConfiguracoesSistemaModal;
