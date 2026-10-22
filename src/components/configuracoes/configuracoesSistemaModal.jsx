@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { UsuariosSistema } from './usuarioSistema.jsx';
 import { TarifasSistema } from './tarifasSistema.jsx';
 import { GeralSistema } from './geralSistema.jsx';
-import { PontosMedicao } from './pontosMedicao.jsx';
+import PontosMedicao from "./pontosMedicao.jsx";
 import {
   X,
   Settings,
