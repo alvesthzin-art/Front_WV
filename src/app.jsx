@@ -10,7 +10,7 @@ import { Sidebar } from './components/layout/sidebar';
 import { Topbar } from './components/layout/topbar';
 //import  ConfiguracoesSistemaModal  from '../src/components/configuracoes/configuracoesSistemaModal';
 import Dashboard from './pages/dashboard';
-import { ConfiguracoesSistemaModal } from './components/configuracoes/configuracoesSistemaModal';
+import ConfiguracoesSistemaModal  from './components/configuracoes/configuracoesSistemaModal';
 // Importe o modal aqui, usando o caminho real do seu projeto.
 // Exemplo:
 // import { ConfiguracoesSistemaModal } from './components/ConfiguracoesSistemaModal';
