@@ -5,6 +5,8 @@ import { summaryCards } from '../components/dashboard/dashboardData';
 import SystemPerformance from '../components/dashboard/systemPerformance';
 import RecentAlarms from '../components/dashboard/recentAlarms';
 import IndicadoresEnergeticos from '../components/dashboard/indicadoresEnergeticos';
+import CalculoButton from "../components/dashboard/calculoButton";
+
 
 function Dashboard() {
   return (
@@ -12,7 +14,10 @@ function Dashboard() {
       {/* Filtros e indicador de atualização */}
       <div className="mb-5">
         <DashboardFilters />
+        <CalculoButton />
       </div>
+     
+
 
       
 
