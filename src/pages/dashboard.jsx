@@ -14,27 +14,23 @@ function Dashboard() {
       {/* Filtros e indicador de atualização */}
       <div className="mb-5">
         <DashboardFilters />
-        <CalculoButton />
       </div>
-     
-
-
+        <CalculoButton />
       
+        <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          {summaryCards.map((item) => (
+            <StatCard key={item.label} item={item} />
+          ))}
+        </section>
 
-<section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-  {summaryCards.map((item) => (
-    <StatCard key={item.label} item={item} />
-  ))}
-</section>
+        <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(320px,0.9fr)]">
+          <SystemPerformance />
+          <RecentAlarms />
+        </section>
 
-<section className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(320px,0.9fr)]">
-  <SystemPerformance />
-  <RecentAlarms />
-</section>
-
-<section className="mt-4">
-  <IndicadoresEnergeticos periodo="24 h" />
-</section>
+        <section className="mt-4">
+          <IndicadoresEnergeticos periodo="24 h" />
+        </section>
     </main>
   );
 }
