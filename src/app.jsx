@@ -1,14 +1,16 @@
 
 import React, { useState } from 'react';
+
+//Import das componentes Gerais
 import { Login } from './pages/login';
 import { Sidebar } from './components/layout/sidebar';
 import { Topbar } from './components/layout/topbar';
-//import  ConfiguracoesSistemaModal  from '../src/components/configuracoes/configuracoesSistemaModal';
+import ConfiguracoesSistemaModal from './components/configuracoes/configuracoesSistemaModal';
+
+//Import das telas: 
 import Dashboard from './pages/dashboard';
-import ConfiguracoesSistemaModal  from './components/configuracoes/configuracoesSistemaModal';
-// Importe o modal aqui, usando o caminho real do seu projeto.
-// Exemplo:
-// import { ConfiguracoesSistemaModal } from './components/ConfiguracoesSistemaModal';
+import Medicao from './pages/medicoes';
+
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -36,15 +38,18 @@ export default function App() {
           onOpenSettings={() => setShowConfigModal(true)}
         />
         {/* Modal de configurações */}
-      {showConfigModal && (
-        <ConfiguracoesSistemaModal
-          onClose={() => setShowConfigModal(false)}
-        />
-      )}
+        {showConfigModal && (
+          <ConfiguracoesSistemaModal
+            onClose={() => setShowConfigModal(false)}
+          />
+        )}
 
         <main className="flex-1 bg-[#070A15] p-4 md:p-8">
+
           {activePage === 'Dashboard' ? (
             <Dashboard />
+          ) : activePage === 'Medições' ? (
+            <Medicao />
           ) : (
             <div className="rounded-card border border-slate-800 bg-slate-900 p-6">
               <h2 className="text-lg font-semibold text-white">
@@ -59,7 +64,7 @@ export default function App() {
         </main>
       </div>
 
-      
+
     </div>
   );
 }
