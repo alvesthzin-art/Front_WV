@@ -1,12 +1,13 @@
-
 import React, { useState } from 'react';
-import { Activity, TrendingUp, Zap } from 'lucide-react';
+import { Activity,TrendingUp, Zap } from 'lucide-react';
 
 import FiltrosMedicao from '../components/medicoes/filtrosMedicao';
 import MedicoesAlarmesModal from '../components/medicoes/medicoesAlarmesModal';
 import CardMedicao from '../components/medicoes/cardMedicao';
 import CardMetaMedicao from '../components/medicoes/cardMetaMedicao';
-//
+import TensaoAoLongoDoTempo from '../components/medicoes/tensaoAoLongoDoTempo';
+import DadosBrutosModal from '../components/medicoes/dadosBrutos';
+
 function Medicao() {
   const [modalAberto, setModalAberto] = useState(false);
 
@@ -17,42 +18,56 @@ function Medicao() {
           onDefinirMeta={() => setModalAberto(true)}
         />
       </div>
-    
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <CardMedicao
-          titulo="Média do Período"
-          valor="218,8"
+          titulo="Media do Período"
+          valor="220"
           unidade="V"
-          icone={Activity}
+          icone={Zap}
           cor="blue"
         />
 
         <CardMedicao
           titulo="Valor Máximo"
-          valor="227,7"
-          unidade="V"
-          icone={TrendingUp}
-          cor="teal"
+          valor="15.4"
+          unidade="A"
+          icone={Activity}
+          cor="green"
         />
 
         <CardMedicao
           titulo="Valor Atual"
-          valor="218,9"
-          unidade="V"
-          icone={Zap}
-          cor="green"
+          valor="3.4"
+          unidade="kW"
+          icone={TrendingUp}
+
+          cor="teal"
         />
 
         <CardMetaMedicao
           onDefinirMeta={() => setModalAberto(true)}
         />
-      </section>
+      </div>
 
+
+
+      {/* Modal de medições, alarmes e gerenciamento de limites */}
       {modalAberto && (
         <MedicoesAlarmesModal
           onClose={() => setModalAberto(false)}
         />
       )}
+
+      {/* Gráfico de tensão ao longo do tempo */}
+      <section className="mt-6">
+        <TensaoAoLongoDoTempo />
+      </section>
+
+      {/* Dados brutos das medições */}
+      <section className="mt-6">
+        <DadosBrutosModal />
+      </section>
     </main>
   );
 }

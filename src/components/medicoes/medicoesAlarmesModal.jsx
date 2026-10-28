@@ -1,11 +1,13 @@
 
 import React, { useMemo, useState } from 'react';
+import NovoLimiteModal from './novoLimiteModal';
 import {
   X,
   Zap,
   Search,
-  Plus,
   Pencil,
+  Trash2,
+  Plus,
 } from 'lucide-react';
 
 const dadosIniciais = [
@@ -71,6 +73,31 @@ const dadosIniciais = [
   },
 ];
 
+const nomesEntidades = {
+  'sensor-01': 'Sensor Principal - Ar Condicionado',
+  'sensor-02': 'Sensor Secundário - Iluminação',
+};
+
+const unidadesGrandeza = {
+  Potência: 'kW',
+  Tensão: 'V',
+  Corrente: 'A',
+  Energia: 'kWh',
+};
+
+function formatarData(data) {
+  if (!data) return '';
+
+  const [ano, mes, dia] = data.split('-');
+  return `${dia}/${mes}/${ano}`;
+}
+
+function obterTipo(escopo) {
+  if (escopo === 'Equipamento') return 'EQUIP.';
+  if (escopo === 'Setor') return 'SETOR';
+  return 'LOCAL';
+}
+
 export default function MedicoesAlarmesModal({ onClose }) {
   const [pesquisa, setPesquisa] = useState('');
   const [grandeza, setGrandeza] = useState('Todos');
@@ -78,6 +105,8 @@ export default function MedicoesAlarmesModal({ onClose }) {
   const [status, setStatus] = useState('Todos');
 
   const [medicoes, setMedicoes] = useState(dadosIniciais);
+  const [novoLimiteAberto, setNovoLimiteAberto] = useState(false);
+  const [itemParaEditar, setItemParaEditar] = useState(null);
 
   const listaFiltrada = useMemo(() => {
     return medicoes.filter((item) => {
@@ -114,6 +143,93 @@ export default function MedicoesAlarmesModal({ onClose }) {
           : item
       )
     );
+  }
+
+  function deletarMedicao(id) {
+    setMedicoes((atuais) =>
+      atuais.filter((item) => item.id !== id)
+    );
+
+    if (itemParaEditar?.id === id) {
+      fecharModalLimite();
+    }
+  }
+
+  function abrirNovoLimite() {
+    setItemParaEditar(null);
+    setNovoLimiteAberto(true);
+  }
+
+  function abrirEdicao(item) {
+    setItemParaEditar(item);
+    setNovoLimiteAberto(true);
+  }
+
+  function fecharModalLimite() {
+    setNovoLimiteAberto(false);
+    setItemParaEditar(null);
+  }
+
+  function salvarLimite(dados) {
+    const nomeEntidade =
+      nomesEntidades[dados.entidade] ||
+      dados.entidade ||
+      'Nova entidade';
+
+    const unidade = unidadesGrandeza[dados.grandeza] || '';
+
+    const periodo =
+      dados.periodoInicial && dados.periodoFinal
+        ? `${formatarData(dados.periodoInicial)} a ${formatarData(
+            dados.periodoFinal
+          )}`
+        : dados.periodoInicial
+          ? `A partir de ${formatarData(dados.periodoInicial)}`
+          : dados.periodoFinal
+            ? `Até ${formatarData(dados.periodoFinal)}`
+            : 'Contínuo';
+
+    const condicaoFormatada = dados.valor
+      ? `${dados.operador || '>'} ${dados.valor} ${unidade}`.trim()
+      : '';
+
+    const novoRegistro = {
+      entidade: nomeEntidade,
+      tipo: obterTipo(dados.escopo),
+      grandeza: dados.grandeza,
+      condicao: condicaoFormatada,
+      severidade: dados.severidade,
+      periodo,
+    };
+
+    if (itemParaEditar) {
+      setMedicoes((atuais) =>
+        atuais.map((item) =>
+          item.id === itemParaEditar.id
+            ? {
+                ...item,
+                ...novoRegistro,
+                status:
+                  dados.limiteAtivo === undefined
+                    ? item.status
+                    : dados.limiteAtivo
+                      ? 'Ativa'
+                      : 'Inativa',
+              }
+            : item
+        )
+      );
+    } else {
+      const novaMedicao = {
+        id: Date.now(),
+        ...novoRegistro,
+        status: dados.limiteAtivo ? 'Ativa' : 'Inativa',
+      };
+
+      setMedicoes((atuais) => [...atuais, novaMedicao]);
+    }
+
+    fecharModalLimite();
   }
 
   const estiloSelect =
@@ -165,6 +281,7 @@ export default function MedicoesAlarmesModal({ onClose }) {
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-[#526176]"
             />
+
             <input
               type="text"
               value={pesquisa}
@@ -198,6 +315,7 @@ export default function MedicoesAlarmesModal({ onClose }) {
               <option>Crítico</option>
               <option>Atenção</option>
               <option>Meta</option>
+              <option>Informativo</option>
             </select>
 
             <select
@@ -214,13 +332,11 @@ export default function MedicoesAlarmesModal({ onClose }) {
 
           <button
             type="button"
-            onClick={() =>
-              window.alert('A criação de uma nova medição será implementada.')
-            }
-            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#244C91] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#2E5EAD]"
+            onClick={abrirNovoLimite}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1C3B6E] px-4 py-2.5 text-sm font-medium text-white ring-1 ring-[#2E5899] transition hover:bg-[#254b8a]"
           >
-            <Plus size={15} />
-            Nova Medição
+            <Plus size={16} />
+            Novo Limite
           </button>
         </div>
 
@@ -250,6 +366,7 @@ export default function MedicoesAlarmesModal({ onClose }) {
                       <span className="rounded-full border border-[#28505B] bg-[#15313B] px-2 py-1 text-[9px] text-[#6CA8B0]">
                         {item.tipo}
                       </span>
+
                       <span className="font-semibold text-[#BEC6D0]">
                         {item.entidade}
                       </span>
@@ -297,17 +414,27 @@ export default function MedicoesAlarmesModal({ onClose }) {
                     </button>
                   </td>
 
-                  <td className="px-3 py-4 text-center">
-                    <button
-                      type="button"
-                      title={`Editar ${item.entidade}`}
-                      onClick={() =>
-                        window.alert(`Edição de "${item.entidade}" será implementada.`)
-                      }
-                      className="rounded-lg p-1.5 text-[#A5AFBD] transition hover:bg-white/5 hover:text-white"
-                    >
-                      <Pencil size={14} />
-                    </button>
+                  {/* Ações */}
+                  <td className="px-3 py-4">
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        title={`Editar ${item.entidade}`}
+                        onClick={() => abrirEdicao(item)}
+                        className="p-1 text-[#C5A059] transition hover:text-[#E2C37B]"
+                      >
+                        <Pencil size={15} />
+                      </button>
+
+                      <button
+                        type="button"
+                        title={`Excluir ${item.entidade}`}
+                        onClick={() => deletarMedicao(item.id)}
+                        className="p-1 text-[#C5A059] transition hover:text-[#E2C37B]"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -326,10 +453,20 @@ export default function MedicoesAlarmesModal({ onClose }) {
           </table>
         </div>
 
+        {/* Rodapé */}
         <footer className="border-t border-[#1D2C42] px-5 py-3 text-xs text-[#718096]">
           {listaFiltrada.length} de {medicoes.length} medições
         </footer>
       </section>
+
+      {/* Modal Criar / Editar Limite */}
+      {novoLimiteAberto && (
+        <NovoLimiteModal
+          itemEdicao={itemParaEditar}
+          onFechar={fecharModalLimite}
+          onSalvar={salvarLimite}
+        />
+      )}
     </div>
   );
 }
