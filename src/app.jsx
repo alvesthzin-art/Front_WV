@@ -28,6 +28,7 @@ export default function App() {
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
+        onLogout={() => setIsAuthenticated(false)}
       />
 
       <div className="flex min-w-0 flex-1 flex-col bg-[#070A15]">

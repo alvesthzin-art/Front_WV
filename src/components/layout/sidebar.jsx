@@ -21,7 +21,7 @@ const menuItems = [
   { name: 'Relatórios', icon: FileText, path: '/relatorios' },
 ];
 
-export function Sidebar({ activePage, setActivePage }) {
+export function Sidebar({ activePage, setActivePage, onLogout }) {
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 min-h-screen flex flex-col justify-between p-4 border-r border-slate-800">
       <div>
@@ -62,7 +62,7 @@ export function Sidebar({ activePage, setActivePage }) {
       {/* Botão Sair Fixo no Rodapé */}
       <div className="pt-4 border-t border-slate-800">
         <button 
-          onClick={() => alert('Saindo do sistema...')}
+          onClick={onLogout}
           className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors"
         >
           <LogOut className="w-5 h-5" />

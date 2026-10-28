@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-
-=======
->>>>>>> dfee140 (Unindo telas)
 import React from 'react';
 import {
   Search,
@@ -76,8 +72,6 @@ export function Topbar({ activePage, onOpenSettings }) {
       </div>
     </header>
   );
-<<<<<<< HEAD
+
 }
-=======
-}
->>>>>>> dfee140 (Unindo telas)
+
