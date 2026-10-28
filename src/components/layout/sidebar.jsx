@@ -41,7 +41,7 @@ export function Sidebar({ activePage, setActivePage, onLogout, isOpen, setIsOpen
             src={logoWV} 
             alt="Logo Watt Vision" 
             className={`object-contain transition-transform group-hover:scale-105 ${
-              isOpen ? 'w-28 h-10' : 'w-10 h-10'
+              isOpen ? 'w-30 h-30' : 'w-15 h-15'
             }`} 
           />
         </div>

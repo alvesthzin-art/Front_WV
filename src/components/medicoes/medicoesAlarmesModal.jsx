@@ -1,21 +1,12 @@
-
 import React, { useMemo, useState } from 'react';
-<<<<<<< HEAD
-=======
 import NovoLimiteModal from './novoLimiteModal';
->>>>>>> juan1/main
 import {
   X,
   Zap,
   Search,
-<<<<<<< HEAD
   Plus,
-  Pencil,
-=======
   Pencil,
   Trash2,
-  Plus,
->>>>>>> juan1/main
 } from 'lucide-react';
 
 const dadosIniciais = [
@@ -81,8 +72,6 @@ const dadosIniciais = [
   },
 ];
 
-<<<<<<< HEAD
-=======
 const nomesEntidades = {
   'sensor-01': 'Sensor Principal - Ar Condicionado',
   'sensor-02': 'Sensor Secundário - Iluminação',
@@ -108,7 +97,6 @@ function obterTipo(escopo) {
   return 'LOCAL';
 }
 
->>>>>>> juan1/main
 export default function MedicoesAlarmesModal({ onClose }) {
   const [pesquisa, setPesquisa] = useState('');
   const [grandeza, setGrandeza] = useState('Todos');
@@ -116,11 +104,8 @@ export default function MedicoesAlarmesModal({ onClose }) {
   const [status, setStatus] = useState('Todos');
 
   const [medicoes, setMedicoes] = useState(dadosIniciais);
-<<<<<<< HEAD
-=======
   const [novoLimiteAberto, setNovoLimiteAberto] = useState(false);
   const [itemParaEditar, setItemParaEditar] = useState(null);
->>>>>>> juan1/main
 
   const listaFiltrada = useMemo(() => {
     return medicoes.filter((item) => {
@@ -159,8 +144,6 @@ export default function MedicoesAlarmesModal({ onClose }) {
     );
   }
 
-<<<<<<< HEAD
-=======
   function deletarMedicao(id) {
     setMedicoes((atuais) =>
       atuais.filter((item) => item.id !== id)
@@ -248,7 +231,6 @@ export default function MedicoesAlarmesModal({ onClose }) {
     fecharModalLimite();
   }
 
->>>>>>> juan1/main
   const estiloSelect =
     'rounded-xl border border-[#1D2C42] bg-[#101827] px-3 py-2.5 text-xs text-[#AEB9C8] outline-none focus:border-[#5A8F97]';
 
@@ -298,10 +280,7 @@ export default function MedicoesAlarmesModal({ onClose }) {
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-[#526176]"
             />
-<<<<<<< HEAD
-=======
 
->>>>>>> juan1/main
             <input
               type="text"
               value={pesquisa}
@@ -335,10 +314,7 @@ export default function MedicoesAlarmesModal({ onClose }) {
               <option>Crítico</option>
               <option>Atenção</option>
               <option>Meta</option>
-<<<<<<< HEAD
-=======
               <option>Informativo</option>
->>>>>>> juan1/main
             </select>
 
             <select
@@ -355,21 +331,11 @@ export default function MedicoesAlarmesModal({ onClose }) {
 
           <button
             type="button"
-<<<<<<< HEAD
-            onClick={() =>
-              window.alert('A criação de uma nova medição será implementada.')
-            }
-            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#244C91] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#2E5EAD]"
+            onClick={abrirNovoLimite}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1C3B6E] px-4 py-2.5 text-xs font-semibold text-white ring-1 ring-[#2E5899] transition hover:bg-[#254b8a]"
           >
             <Plus size={15} />
-            Nova Medição
-=======
-            onClick={abrirNovoLimite}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1C3B6E] px-4 py-2.5 text-sm font-medium text-white ring-1 ring-[#2E5899] transition hover:bg-[#254b8a]"
-          >
-            <Plus size={16} />
             Novo Limite
->>>>>>> juan1/main
           </button>
         </div>
 
@@ -399,10 +365,7 @@ export default function MedicoesAlarmesModal({ onClose }) {
                       <span className="rounded-full border border-[#28505B] bg-[#15313B] px-2 py-1 text-[9px] text-[#6CA8B0]">
                         {item.tipo}
                       </span>
-<<<<<<< HEAD
-=======
 
->>>>>>> juan1/main
                       <span className="font-semibold text-[#BEC6D0]">
                         {item.entidade}
                       </span>
@@ -450,21 +413,7 @@ export default function MedicoesAlarmesModal({ onClose }) {
                     </button>
                   </td>
 
-<<<<<<< HEAD
                   <td className="px-3 py-4 text-center">
-                    <button
-                      type="button"
-                      title={`Editar ${item.entidade}`}
-                      onClick={() =>
-                        window.alert(`Edição de "${item.entidade}" será implementada.`)
-                      }
-                      className="rounded-lg p-1.5 text-[#A5AFBD] transition hover:bg-white/5 hover:text-white"
-                    >
-                      <Pencil size={14} />
-                    </button>
-=======
-                  {/* Ações */}
-                  <td className="px-3 py-4">
                     <div className="flex items-center justify-center gap-3">
                       <button
                         type="button"
@@ -484,7 +433,6 @@ export default function MedicoesAlarmesModal({ onClose }) {
                         <Trash2 size={15} />
                       </button>
                     </div>
->>>>>>> juan1/main
                   </td>
                 </tr>
               ))}
@@ -503,16 +451,11 @@ export default function MedicoesAlarmesModal({ onClose }) {
           </table>
         </div>
 
-<<<<<<< HEAD
-=======
         {/* Rodapé */}
->>>>>>> juan1/main
         <footer className="border-t border-[#1D2C42] px-5 py-3 text-xs text-[#718096]">
           {listaFiltrada.length} de {medicoes.length} medições
         </footer>
       </section>
-<<<<<<< HEAD
-=======
 
       {/* Modal Criar / Editar Limite */}
       {novoLimiteAberto && (
@@ -522,7 +465,6 @@ export default function MedicoesAlarmesModal({ onClose }) {
           onSalvar={salvarLimite}
         />
       )}
->>>>>>> juan1/main
     </div>
   );
 }

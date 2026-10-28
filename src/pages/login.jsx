@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, ShieldCheck, Activity, Wifi, ArrowRight } from 'lucide-react';
 import loginBg from '../assets/login.png';
+import logoWV from '../assets/logoWV.png';
 
 export function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -55,16 +56,17 @@ export function Login({ onLoginSuccess }) {
         <div></div>
 
         <div className="w-full max-w-md mx-auto space-y-8">
-          {/* Logo Watt Vision */}
+
+
+          {/* Logo Watt Vision (Substituído o ícone pela imagem logoWV) */}
           <div className="flex flex-col items-center text-center">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-                <Activity className="w-7 h-7" />
-              </div>
+              <img 
+                src={logoWV} 
+                alt="Logo Watt Vision" 
+                className="w-50 h-50 object-contain" 
+              />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-white mt-2">
-              WATT <span className="text-blue-500">VISION</span>
-            </h2>
           </div>
 
           {/* Cabeçalho do Formulário */}

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Target } from 'lucide-react';
 
@@ -32,30 +31,15 @@ export default function FiltrosMedicao({
 
   const estiloLabel = 'text-[#65758B]';
 
-<<<<<<< HEAD
-  return (
-    <section className="w-full rounded-[20px] border border-[#263448] bg-[#0C141F] p-3.5 sm:p-4">
-      <div className="flex flex-col gap-3">
-        {/* Primeira linha: filtros de localização */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <label className={estiloSelect + ' flex items-center gap-1.5'}>
-            <span className={estiloLabel}>Local:</span>
-            <select
-              className="min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
-=======
- 
-
   return (
     <section className="w-full min-w-0 rounded-[20px] border border-[#263448] bg-[#0C141F] p-3.5 sm:p-4">
       <div className="flex w-full min-w-0 flex-col gap-2.5 xl:flex-row xl:flex-nowrap xl:items-center">
-  
         {/* Filtros de localização */}
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:flex xl:flex-nowrap">
           <label className={`${estiloSelect} flex min-w-0 items-center gap-1.5`}>
             <span className={estiloLabel}>Local:</span>
             <select
               className="w-full min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
->>>>>>> juan1/main
               value={valores.local}
               onChange={(e) => atualizar('local', e.target.value)}
             >
@@ -66,19 +50,11 @@ export default function FiltrosMedicao({
               ))}
             </select>
           </label>
-<<<<<<< HEAD
 
-          <label className={estiloSelect + ' flex items-center gap-1.5'}>
-            <span className={estiloLabel}>Setor:</span>
-            <select
-              className="min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
-=======
-  
           <label className={`${estiloSelect} flex min-w-0 items-center gap-1.5`}>
             <span className={estiloLabel}>Setor:</span>
             <select
               className="w-full min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
->>>>>>> juan1/main
               value={valores.setor}
               onChange={(e) => atualizar('setor', e.target.value)}
             >
@@ -89,19 +65,11 @@ export default function FiltrosMedicao({
               ))}
             </select>
           </label>
-<<<<<<< HEAD
 
-          <label className={estiloSelect + ' flex items-center gap-1.5'}>
-            <span className={estiloLabel}>Equipamento:</span>
-            <select
-              className="min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
-=======
-  
           <label className={`${estiloSelect} col-span-2 flex min-w-0 items-center gap-1.5 sm:col-span-1`}>
             <span className={estiloLabel}>Equipamento:</span>
             <select
               className="w-full min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
->>>>>>> juan1/main
               value={valores.equipamento}
               onChange={(e) => atualizar('equipamento', e.target.value)}
             >
@@ -112,27 +80,16 @@ export default function FiltrosMedicao({
               ))}
             </select>
           </label>
-<<<<<<< HEAD
-
-          <div className="hidden h-6 w-px bg-[#263448] sm:block" />
         </div>
 
-        {/* Segunda linha: período, grandeza e ação */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <label className={estiloSelect + ' flex items-center gap-1.5'}>
-            <span className={estiloLabel}>Período:</span>
-            <select
-              className="bg-transparent text-[#C0C5C8] outline-none"
-=======
-        </div>
-  
+        <div className="hidden h-6 w-px bg-[#263448] xl:block" />
+
         {/* Período, grandeza e botão */}
-        <div className="grid grid-cols-2 items-center gap-2.5 sm:grid-cols-3 xl:flex xl:flex-nowrap">
+        <div className="grid grid-cols-2 items-center gap-2.5 sm:grid-cols-3 xl:flex xl:flex-nowrap xl:flex-1">
           <label className={`${estiloSelect} flex min-w-0 items-center gap-1.5`}>
             <span className={estiloLabel}>Período:</span>
             <select
               className="w-full min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
->>>>>>> juan1/main
               value={valores.periodo}
               onChange={(e) => atualizar('periodo', e.target.value)}
             >
@@ -145,33 +102,7 @@ export default function FiltrosMedicao({
               )}
             </select>
           </label>
-<<<<<<< HEAD
 
-          <div className="hidden h-6 w-px bg-[#263448] sm:block" />
-
-          <label className={estiloSelect + ' flex items-center gap-1.5'}>
-            <span className={estiloLabel}>Grandeza:</span>
-            <select
-              className="bg-transparent text-[#C0C5C8] outline-none"
-              value={valores.grandeza}
-              onChange={(e) => atualizar('grandeza', e.target.value)}
-            >
-              {['Tensão', 'Corrente', 'Potência', 'Energia', 'Frequência', 'Fator de potência'].map(
-                (item) => (
-                  <option key={item} value={item} className="bg-[#0C141F]">
-                    {item}
-                  </option>
-                )
-              )}
-            </select>
-          </label>
-
-          <button
-            type="button"
-            onClick={onDefinirMeta}
-            className="ml-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#24498B] px-3.5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#305BA5] focus:outline-none focus:ring-2 focus:ring-[#5A8F97]"
-=======
-  
           <label className={`${estiloSelect} flex min-w-0 items-center gap-1.5`}>
             <span className={estiloLabel}>Grandeza:</span>
             <select
@@ -193,12 +124,11 @@ export default function FiltrosMedicao({
               ))}
             </select>
           </label>
-  
+
           <button
             type="button"
             onClick={onDefinirMeta}
             className="col-span-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#24498B] px-3.5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#305BA5] focus:outline-none focus:ring-2 focus:ring-[#5A8F97] sm:col-span-1 xl:ml-auto xl:w-auto xl:shrink-0"
->>>>>>> juan1/main
           >
             <Target size={15} />
             Definir Meta
@@ -207,9 +137,4 @@ export default function FiltrosMedicao({
       </div>
     </section>
   );
-<<<<<<< HEAD
-=======
-  
-
->>>>>>> juan1/main
 }
