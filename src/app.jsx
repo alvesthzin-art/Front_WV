@@ -14,6 +14,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activePage, setActivePage] = useState('Dashboard');
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Controla se a Sidebar está aberta ou recolhida
 
   if (!isAuthenticated) {
     return (
@@ -24,14 +25,21 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#070A15] font-sans text-slate-100">
+    <div 
+      className="flex min-h-screen font-sans text-slate-100"
+      style={{
+        background: 'linear-gradient(135deg, #070A15 0%, #0B132B 50%, #04060B 100%)'
+      }}
+    >
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
         onLogout={() => setIsAuthenticated(false)}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col bg-[#070A15]">
+      <div className="flex min-w-0 flex-1 flex-col bg-transparent">
         <Topbar
           activePage={activePage}
           onOpenSettings={() => setShowConfigModal(true)}
@@ -44,13 +52,13 @@ export default function App() {
           />
         )}
 
-        <main className="flex-1 bg-[#070A15] p-4 md:p-8">
+        <main className="flex-1 p-4 md:p-8 bg-transparent">
           {activePage === 'Dashboard' ? (
             <Dashboard />
           ) : activePage === 'Medições' ? (
             <Medicao />
           ) : (
-            <div className="rounded-card border border-slate-800 bg-slate-900 p-6">
+            <div className="rounded-card border border-slate-800/60 bg-slate-900/80 backdrop-blur-md p-6">
               <h2 className="text-lg font-semibold text-white">
                 {activePage}
               </h2>
