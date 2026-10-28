@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 
+=======
+>>>>>>> dfee140 (Unindo telas)
 import React from 'react';
 import {
   Search,
@@ -7,10 +10,10 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-export function Topbar({ activePage, onOpenSettings }){
+export function Topbar({ activePage, onOpenSettings }) {
   return (
     <header
-      className="flex flex-shrink-0 items-center justify-between px-6 py-4"
+      className="flex flex-shrink-0 items-center justify-between px-6 py-4 border-b border-slate-900"
       style={{ backgroundColor: '#070A15' }}
     >
       {/* Título e subtítulo */}
@@ -18,7 +21,6 @@ export function Topbar({ activePage, onOpenSettings }){
         <h1 className="text-xl font-bold tracking-tight text-[#C0C5C8]">
           {activePage}
         </h1>
-
         <p className="mt-1 text-xs text-[#9ca1a6]">
           Visão geral do sistema
         </p>
@@ -32,7 +34,6 @@ export function Topbar({ activePage, onOpenSettings }){
             className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
             style={{ color: '#4A525B' }}
           />
-
           <input
             type="text"
             placeholder="Buscar..."
@@ -44,8 +45,7 @@ export function Topbar({ activePage, onOpenSettings }){
           />
         </div>
 
-
-        {/* Configurações */}
+        {/* Botão Configurações */}
         <button
           type="button"
           aria-label="Configurações"
@@ -61,7 +61,6 @@ export function Topbar({ activePage, onOpenSettings }){
           <Settings size={15} />
         </button>
 
-
         {/* Perfil */}
         <button
           type="button"
@@ -74,8 +73,11 @@ export function Topbar({ activePage, onOpenSettings }){
         >
           WV
         </button>
-
       </div>
     </header>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> dfee140 (Unindo telas)
