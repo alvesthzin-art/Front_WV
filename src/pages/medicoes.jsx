@@ -12,12 +12,7 @@ export default function Medicao() {
   const [modalAberto, setModalAberto] = useState(false);
 
   return (
-    <main 
-      className="space-y-6 p-4 md:p-6 rounded-2xl text-slate-200 min-h-screen"
-      style={{
-        background: 'linear-gradient(135deg, rgba(7, 10, 21, 0.4) 0%, rgba(11, 19, 43, 0.6) 50%, rgba(4, 6, 11, 0.4) 100%)'
-      }}
-    >
+    <main className="space-y-6 p-4 md:p-6 text-slate-200 min-h-screen bg-transparent">
       {/* Filtros de Medição */}
       <div className="mb-5">
         <FiltrosMedicao

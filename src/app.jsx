@@ -9,12 +9,13 @@ import ConfiguracoesSistemaModal from './components/configuracoes/configuracoesS
 // Import das telas: 
 import Dashboard from './pages/dashboard';
 import Medicao from './pages/medicoes';
+import Operacional from './pages/operacional';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activePage, setActivePage] = useState('Dashboard');
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Controla se a Sidebar está aberta ou recolhida
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   if (!isAuthenticated) {
     return (
@@ -45,7 +46,6 @@ export default function App() {
           onOpenSettings={() => setShowConfigModal(true)}
         />
         
-        {/* Modal de configurações */}
         {showConfigModal && (
           <ConfiguracoesSistemaModal
             onClose={() => setShowConfigModal(false)}
@@ -57,6 +57,8 @@ export default function App() {
             <Dashboard />
           ) : activePage === 'Medições' ? (
             <Medicao />
+          ) : activePage === 'Operacional' ? (
+            <Operacional />
           ) : (
             <div className="rounded-card border border-slate-800/60 bg-slate-900/80 backdrop-blur-md p-6">
               <h2 className="text-lg font-semibold text-white">
