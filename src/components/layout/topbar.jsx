@@ -7,9 +7,14 @@ import {
 } from 'lucide-react';
 
 export function Topbar({ activePage, onOpenSettings }) {
+  // Verifica se a página ativa é a Dashboard para ocultar a linha de borda inferior
+  const isDashboard = activePage === 'Dashboard';
+
   return (
     <header
-      className="flex flex-shrink-0 items-center justify-between px-6 py-4 border-b border-slate-800/60 bg-slate-950/40 backdrop-blur-md"
+      className={`flex flex-shrink-0 items-center justify-between px-6 py-4 bg-slate-950/40 backdrop-blur-md ${
+        !isDashboard ? 'border-b border-slate-800/60' : ''
+      }`}
     >
       {/* Título e subtítulo */}
       <div>

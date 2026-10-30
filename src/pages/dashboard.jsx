@@ -11,22 +11,45 @@ import api from '../services/api'; // Importa a nossa instância configurada do 
 function Dashboard() {
   const [summaryCards, setSummaryCards] = useState(summaryCardsFallback);
   const [loading, setLoading] = useState(true);
+  const [dadosMedicoes, setDadosMedicoes] = useState([]); // Estado para guardar as medições reais
 
   useEffect(() => {
     async function carregarDadosReais() {
       try {
-        // Exemplo de requisição para buscar equipamentos e alertas reais do back-end
-        const [resEquipamentos, resAlertas] = await Promise.all([
+        // Buscando equipamentos, alertas e a série temporal de medições em paralelo
+        const [resEquipamentos, resAlertas, resMedicoes] = await Promise.all([
           api.get('/equipamentos').catch(() => ({ data: [] })),
-          api.get('/alertas').catch(() => ({ data: [] }))
+          api.get('/alertas').catch(() => ({ data: [] })),
+          api.get('/api/medicoes/serie-temporal', { params: { id_pzem: 1, horas: 24 } }).catch(() => ({ data: { dados: [] } }))
         ]);
 
         console.log("Dados recebidos do back-end:", {
           equipamentos: resEquipamentos.data,
-          alertas: resAlertas.data
+          alertas: resAlertas.data,
+          medicoes: resMedicoes.data
         });
 
-        //  pode atualizar os estados dos cards com base nos dados reais que vierem do banco
+        // Se a API de medições retornou dados com sucesso, guarda no estado
+        if (resMedicoes.data && resMedicoes.data.dados) {
+          setDadosMedicoes(resMedicoes.data.dados);
+          
+          // Opcional: Se quiser atualizar dinamicamente algum card de resumo com o valor atual da tensão
+          const ultimosDados = resMedicoes.data.dados;
+          if (ultimosDados.length > 0) {
+            const ultimaLeitura = ultimosDados[ultimosDados.length - 1];
+            
+            // Exemplo de como atualizar o primeiro card com a tensão real em tempo real
+            setSummaryCards(prevCards => 
+              prevCards.map((card, index) => {
+                if (index === 0) {
+                  return { ...card, value: `${ultimaLeitura.tensao} V` };
+                }
+                return card;
+              })
+            );
+          }
+        }
+
         setLoading(false);
       } catch (error) {
         console.error("Erro ao conectar com o back-end do Watt Vision:", error);
@@ -53,7 +76,7 @@ function Dashboard() {
       </section>
 
       <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(320px,0.9fr)]">
-        <SystemPerformance />
+        <SystemPerformance dados={dadosMedicoes} />
         <RecentAlarms />
       </section>
 
