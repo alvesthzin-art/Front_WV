@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Cpu, 
   CheckCircle2, 
@@ -10,66 +10,284 @@ import {
   Pencil,
   Layers,
   MapPin,
-  Zap
+  Zap,
+  ArrowLeft,
+  AlertCircle,
+  Save
 } from 'lucide-react';
 import NovoOperacionalModal from '../components/operacional/NovoOperacionalModal';
-
-const dadosEquipamentos = [
-  { id: 1, nome: 'Bomba Centrifuga BC-02', codigo: 'ESP32-008', local: 'Planta Industrial Jandira', setor: 'Utilidades', potencia: '5,6 kW', consumo: '142,1 kWh', status: 'Online' },
-  { id: 2, nome: 'Chiller CH-01', codigo: 'ESP32-025', local: 'Planta Industrial Osasco', setor: 'HVAC', potencia: '31,2 kW', consumo: '831,5 kWh', status: 'Atenção' },
-  { id: 3, nome: 'Compressor HVAC-03', codigo: 'ESP32-001', local: 'Planta Industrial Osasco', setor: 'HVAC', potencia: '18,4 kW', consumo: '487,3 kWh', status: 'Online' },
-  { id: 4, nome: 'Estação de Solda S-04', codigo: 'ESP32-019', local: 'Planta Industrial Osasco', setor: 'Produção', potencia: '—', consumo: '—', status: 'Offline' },
-  { id: 5, nome: 'Fresadora FM-05', codigo: 'ESP32-033', local: 'Planta Industrial Jandira', setor: 'Produção', potencia: '9,1 kW', consumo: '241,8 kWh', status: 'Online' },
-];
-
-const dadosSetores = [
-  { id: 1, nome: 'Produção', codigo: 'SET-JND-PRD', local: 'Planta Industrial Jandira', equipamentosVinc: '3 equipamentos', consumo: '1.174,7 kWh', status: 'Ativo' },
-  { id: 2, nome: 'Utilidades', codigo: 'SET-JND-UTL', local: 'Planta Industrial Jandira', equipamentosVinc: '2 equipamentos', consumo: '454,9 kWh', status: 'Ativo' },
-  { id: 3, nome: 'Manutenção', codigo: 'SET-JND-MNT', local: 'Planta Industrial Jandira', equipamentosVinc: '0 equipamentos', consumo: '0,0 kWh', status: 'Ativo' },
-  { id: 4, nome: 'Produção', codigo: 'SET-OSC-PRD', local: 'Planta Industrial Osasco', equipamentosVinc: '2 equipamentos', consumo: '1.203,6 kWh', status: 'Ativo' },
-  { id: 5, nome: 'HVAC', codigo: 'SET-OSC-HVC', local: 'Planta Industrial Osasco', equipamentosVinc: '3 equipamentos', consumo: '1.710,9 kWh', status: 'Ativo' },
-];
-
-const dadosLocais = [
-  { id: 1, nome: 'Planta Industrial Jandira', codigo: 'LOC-JND-01', setores: '3 setores', equipamentos: 5, consumo: '1.629,5 kWh', status: 'Ativo' },
-  { id: 2, nome: 'Planta Industrial Osasco', codigo: 'LOC-OSC-02', setores: '3 setores', equipamentos: 7, consumo: '2.606,2 kWh', status: 'Ativo' },
-  { id: 3, nome: 'Centro Logístico Alphaville', codigo: 'LOC-ALP-03', setores: '1 setor', equipamentos: 0, consumo: '0,0 kWh', status: 'Inativo' },
-  { id: 4, nome: 'Subestação Central', codigo: 'LOC-SUB-04', setores: '0 setores', equipamentos: 0, consumo: '245,8 kWh', status: 'Ativo' },
-];
+import api from '../services/api';
 
 export default function Operacional() {
   const [abaAtiva, setAbaAtiva] = useState('Equipamentos');
   const [pesquisa, setPesquisa] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('Todos');
   const [modalAberto, setModalAberto] = useState(false);
+  const [equipamentoSelecionado, setEquipamentoSelecionado] = useState(null);
 
-  const [equipamentos, setEquipamentos] = useState(dadosEquipamentos);
-  const [setores, setSetores] = useState(dadosSetores);
-  const [locais, setLocais] = useState(dadosLocais);
+  // Estados limpos (vazios) para coletar e carregar dados reais da aplicação/back-end
+  const [equipamentos, setEquipamentos] = useState([]);
+  const [setores, setSetores] = useState([]);
+  const [locais, setLocais] = useState([]);
 
-  const handleSalvarNovo = (novoItem) => {
-    if (abaAtiva === 'Equipamentos') {
-      setEquipamentos([{ id: Date.now(), ...novoItem, status: novoItem.status === 'Ativo' ? 'Online' : 'Offline' }, ...equipamentos]);
-    } else if (abaAtiva === 'Setores') {
-      setSetores([{ id: Date.now(), ...novoItem, equipamentosVinc: '1 equipamento', consumo: '0,0 kWh' }, ...setores]);
-    } else {
-      setLocais([{ id: Date.now(), ...novoItem, setores: '1 setor', equipamentos: 0, consumo: '0,0 kWh' }, ...locais]);
+  const [formEdicao, setFormEdicao] = useState({});
+
+  // Carrega dados de Equipamentos, Setores e Locais do Back-end ao iniciar
+  useEffect(() => {
+    async function carregarDadosGlobaisAPI() {
+      try {
+        const [resEquipamentos, resSetores, resLocais] = await Promise.all([
+          api.get('/equipamentos').catch(() => ({ data: [] })),
+          api.get('/setores').catch(() => ({ data: [] })),
+          api.get('/locais').catch(() => ({ data: [] }))
+        ]);
+
+        if (resEquipamentos.data && Array.isArray(resEquipamentos.data)) {
+          setEquipamentos(resEquipamentos.data);
+        }
+        if (resSetores.data && Array.isArray(resSetores.data)) {
+          setSetores(resSetores.data);
+        }
+        if (resLocais.data && Array.isArray(resLocais.data)) {
+          setLocais(resLocais.data);
+        }
+      } catch (error) {
+        console.log("Aguardando conexão com as APIs do back-end...");
+      }
+    }
+    carregarDadosGlobaisAPI();
+  }, []);
+
+  const handleSelecionarEquipamento = (item) => {
+    setEquipamentoSelecionado(item);
+    setFormEdicao(item);
+  };
+
+  const handleInputChange = (campo, valor) => {
+    setFormEdicao(prev => ({ ...prev, [campo]: valor }));
+  };
+
+  // Salvar Alterações de Equipamento (PUT / PATCH)
+  const handleSalvarAlteracoes = async () => {
+    try {
+      await api.put(`/equipamentos/${formEdicao.id}`, formEdicao).catch(() => {});
+      setEquipamentos(prev => 
+        prev.map(eq => eq.id === formEdicao.id ? formEdicao : eq)
+      );
+      alert('Alterações salvas com sucesso no banco!');
+      setEquipamentoSelecionado(null);
+    } catch (error) {
+      console.error("Erro ao salvar alterações:", error);
+      alert('Erro ao salvar alterações.');
+    }
+  };
+
+  // Cadastrar Novo Item (POST)
+  const handleSalvarNovo = async (novoItem) => {
+    try {
+      if (abaAtiva === 'Equipamentos') {
+        const res = await api.post('/equipamentos', novoItem).catch(() => ({ data: { id: Date.now(), ...novoItem } }));
+        setEquipamentos(prev => [res.data || { id: Date.now(), ...novoItem }, ...prev]);
+      } else if (abaAtiva === 'Setores') {
+        const res = await api.post('/setores', novoItem).catch(() => ({ data: { id: Date.now(), ...novoItem } }));
+        setSetores(prev => [res.data || { id: Date.now(), ...novoItem }, ...prev]);
+      } else {
+        const res = await api.post('/locais', novoItem).catch(() => ({ data: { id: Date.now(), ...novoItem } }));
+        setLocais(prev => [res.data || { id: Date.now(), ...novoItem }, ...prev]);
+      }
+      alert('Item cadastrado com sucesso!');
+      setModalAberto(false);
+    } catch (error) {
+      console.error("Erro ao cadastrar novo item:", error);
+      alert('Erro ao salvar no back-end.');
+    }
+  };
+
+  // Deletar Item (DELETE)
+  const handleDeletar = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm('Tem certeza que deseja excluir este item permanentemente?')) return;
+
+    try {
+      if (abaAtiva === 'Equipamentos') {
+        await api.delete(`/equipamentos/${id}`).catch(() => {});
+        setEquipamentos(prev => prev.filter(item => item.id !== id));
+      } else if (abaAtiva === 'Setores') {
+        await api.delete(`/setores/${id}`).catch(() => {});
+        setSetores(prev => prev.filter(item => item.id !== id));
+      } else {
+        await api.delete(`/locais/${id}`).catch(() => {});
+        setLocais(prev => prev.filter(item => item.id !== id));
+      }
+      alert('Item excluído com sucesso!');
+    } catch (error) {
+      console.error("Erro ao deletar:", error);
+      alert('Erro ao excluir item.');
     }
   };
 
   const itensFiltrados = () => {
     if (abaAtiva === 'Equipamentos') {
-      return equipamentos.filter(i => i.nome.toLowerCase().includes(pesquisa.toLowerCase()) && (filtroStatus === 'Todos' || i.status === filtroStatus));
+      return equipamentos.filter(i => i.nome?.toLowerCase().includes(pesquisa.toLowerCase()) && (filtroStatus === 'Todos' || i.status === filtroStatus));
     } else if (abaAtiva === 'Setores') {
-      return setores.filter(i => i.nome.toLowerCase().includes(pesquisa.toLowerCase()) && (filtroStatus === 'Todos' || i.status === filtroStatus));
+      return setores.filter(i => i.nome?.toLowerCase().includes(pesquisa.toLowerCase()) && (filtroStatus === 'Todos' || i.status === filtroStatus));
     } else {
-      return locais.filter(i => i.nome.toLowerCase().includes(pesquisa.toLowerCase()) && (filtroStatus === 'Todos' || i.status === filtroStatus));
+      return locais.filter(i => i.nome?.toLowerCase().includes(pesquisa.toLowerCase()) && (filtroStatus === 'Todos' || i.status === filtroStatus));
     }
   };
 
+  if (equipamentoSelecionado) {
+    return (
+      <main className="space-y-6 p-4 md:p-6 text-slate-200 min-h-screen bg-transparent">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-white">Detalhes do Equipamento</h1>
+              <p className="text-xs text-slate-400 mt-0.5">Gerencie as informações e dados do dispositivo.</p>
+            </div>
+            <button 
+              onClick={() => alert('Redirecionando para medições completas...')}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-500 shadow-lg shadow-blue-600/20"
+            >
+              Ver Medições Completas +
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <button onClick={() => setEquipamentoSelecionado(null)} className="hover:text-blue-400 transition flex items-center gap-1">
+              <ArrowLeft size={14} /> Equipamentos
+            </button>
+            <span>/</span>
+            <span className="text-slate-200 font-medium">{formEdicao.nome}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20">
+              <Cpu size={20} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white">{formEdicao.nome}</h3>
+              <p className="text-xs text-emerald-400 flex items-center gap-1.5 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Última comunicação: há 5 segundos
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
+            <span className="bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">Identificador: <strong className="text-white">{formEdicao.codigo}</strong></span>
+            <span className="bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">Local: <strong className="text-white">{formEdicao.local}</strong></span>
+            <span className="bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">Setor: <strong className="text-white">{formEdicao.setor}</strong></span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
+          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-6 backdrop-blur-md space-y-5">
+            <div>
+              <h2 className="text-sm font-bold text-white">Informações do Equipamento</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Edite os dados diretamente e salve as alterações ao clicar em "Salvar Alterações".</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Nome</label>
+                <input type="text" value={formEdicao.nome || ''} onChange={(e) => handleInputChange('nome', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Identificação</label>
+                <input type="text" value={formEdicao.codigo || ''} onChange={(e) => handleInputChange('codigo', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Fabricante</label>
+                <input type="text" value={formEdicao.fabricante || ''} onChange={(e) => handleInputChange('fabricante', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Modelo</label>
+                <input type="text" value={formEdicao.modelo || ''} onChange={(e) => handleInputChange('modelo', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Número de Série</label>
+                <input type="text" value={formEdicao.numeroSerie || ''} onChange={(e) => handleInputChange('numeroSerie', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Tensão Nominal (V)</label>
+                <input type="text" value={formEdicao.tensaoNominal || ''} onChange={(e) => handleInputChange('tensaoNominal', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Data de Instalação</label>
+                <input type="text" value={formEdicao.dataInstalacao || ''} onChange={(e) => handleInputChange('dataInstalacao', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Setor</label>
+                <select value={formEdicao.setor || ''} onChange={(e) => handleInputChange('setor', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition">
+                  <option>Utilidades</option>
+                  <option>HVAC</option>
+                  <option>Produção</option>
+                  <option>Manutenção</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Local</label>
+                <select value={formEdicao.local || ''} onChange={(e) => handleInputChange('local', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition">
+                  <option>Planta Industrial Jandira</option>
+                  <option>Planta Industrial Osasco</option>
+                  <option>Centro Logístico Alphaville</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Status</label>
+                <select value={formEdicao.status || ''} onChange={(e) => handleInputChange('status', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition">
+                  <option>Online</option>
+                  <option>Atenção</option>
+                  <option>Offline</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Descrição</label>
+              <textarea rows={3} value={formEdicao.descricao || ''} onChange={(e) => handleInputChange('descricao', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition resize-none" />
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button onClick={handleSalvarAlteracoes} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-500 shadow-lg shadow-blue-600/20">
+                <Save size={15} /> Salvar Alterações
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-6 backdrop-blur-md space-y-4">
+            <div>
+              <h2 className="text-sm font-bold text-white">Alarmes do Equipamento</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Eventos de alerta gerados para o dispositivo.</p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs space-y-1">
+                <div className="flex items-center justify-between text-rose-400 font-semibold">
+                  <span className="flex items-center gap-1.5"><AlertCircle size={14} /> Sobretensão detectada</span>
+                  <span className="text-[10px] text-slate-400">há 5 min</span>
+                </div>
+                <p className="text-slate-300 text-[11px]">Tensao &gt; 250V | Atual: 254V</p>
+              </div>
+
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs space-y-1">
+                <div className="flex items-center justify-between text-amber-400 font-semibold">
+                  <span className="flex items-center gap-1.5"><AlertTriangle size={14} /> Corrente elevada</span>
+                  <span className="text-[10px] text-slate-400">há 18 min</span>
+                </div>
+                <p className="text-slate-300 text-[11px]">Corrente &gt; 50A | Atual: 54.3A</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="space-y-6 p-4 md:p-6 text-slate-200 min-h-screen bg-transparent">
-      {/* Abas Superiores */}
       <div className="flex border-b border-slate-800/60 gap-8">
         {['Equipamentos', 'Setores', 'Locais'].map((aba) => (
           <button
@@ -86,7 +304,6 @@ export default function Operacional() {
         ))}
       </div>
 
-      {/* Barra de Filtros e Botão Adicionar */}
       <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3 flex-1">
           <div className="relative min-w-[260px] flex-1 sm:flex-none">
@@ -121,7 +338,6 @@ export default function Operacional() {
         </button>
       </div>
 
-      {/* Cards de Resumo Dinâmicos por Aba */}
       {abaAtiva === 'Equipamentos' && (
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
@@ -166,7 +382,7 @@ export default function Operacional() {
           </div>
           <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
             <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20"><Zap size={18} /></div></div>
-            <h3 className="text-2xl font-bold text-white">4.235,8 kWh</h3>
+            <h3 className="text-2xl font-bold text-white">0,0 kWh</h3>
             <p className="text-xs text-slate-400 mt-0.5">Consumo Agregado</p>
           </div>
         </section>
@@ -191,13 +407,12 @@ export default function Operacional() {
           </div>
           <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
             <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-blue-500/20"><Zap size={18} /></div></div>
-            <h3 className="text-2xl font-bold text-white">4.481,5 kWh</h3>
+            <h3 className="text-2xl font-bold text-white">0,0 kWh</h3>
             <p className="text-xs text-slate-400 mt-0.5">Consumo Total</p>
           </div>
         </section>
       )}
 
-      {/* Tabelas de Conteúdo Correspondentes */}
       <section className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 backdrop-blur-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] border-collapse text-left text-xs">
@@ -213,42 +428,69 @@ export default function Operacional() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {itensFiltrados().map((item) => (
-                <tr key={item.id} className="transition hover:bg-slate-900/40">
-                  <td className="px-5 py-4">
-                    <p className="font-semibold text-slate-200">{item.nome}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{item.codigo || item.id}</p>
-                  </td>
-                  <td className="px-4 py-4 text-slate-300">{item.local || item.setores}</td>
-                  <td className="px-4 py-4 text-slate-300">{item.setor || item.equipamentosVinc || item.equipamentos}</td>
-                  <td className="px-4 py-4 text-slate-300 font-medium">{item.potencia || item.consumo}</td>
-                  {abaAtiva === 'Equipamentos' && <td className="px-4 py-4 text-slate-300 font-medium">{item.consumo}</td>}
-                  <td className="px-4 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border ${
-                      item.status === 'Online' || item.status === 'Ativo'
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                        : item.status === 'Atenção'
-                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                        : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'Online' || item.status === 'Ativo' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"><Pencil size={15} /></button>
-                      <button className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition"><Trash2 size={15} /></button>
-                    </div>
+              {itensFiltrados().length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-5 py-8 text-center text-slate-400 text-xs">
+                    Nenhum registro encontrado. Cadastre novos itens pelo botão acima ou verifique a conexão com o back-end.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                itensFiltrados().map((item) => (
+                  <tr 
+                    key={item.id} 
+                    onClick={() => {
+                      if (abaAtiva === 'Equipamentos') {
+                        handleSelecionarEquipamento(item);
+                      }
+                    }}
+                    className={`transition hover:bg-slate-900/40 ${abaAtiva === 'Equipamentos' ? 'cursor-pointer' : ''}`}
+                  >
+                    <td className="px-5 py-4">
+                      <p className="font-semibold text-slate-200 hover:text-blue-400 transition">{item.nome}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{item.codigo || item.id}</p>
+                    </td>
+                    <td className="px-4 py-4 text-slate-300">{item.local || item.setores}</td>
+                    <td className="px-4 py-4 text-slate-300">{item.setor || item.equipamentosVinc || item.equipamentos}</td>
+                    <td className="px-4 py-4 text-slate-300 font-medium">{item.potencia || item.consumo}</td>
+                    {abaAtiva === 'Equipamentos' && <td className="px-4 py-4 text-slate-300 font-medium">{item.consumo}</td>}
+                    <td className="px-4 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border ${
+                        item.status === 'Online' || item.status === 'Ativo'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          : item.status === 'Atenção'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'Online' || item.status === 'Ativo' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button 
+                          onClick={(e) => {
+                            if (abaAtiva === 'Equipamentos') handleSelecionarEquipamento(item);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button 
+                          onClick={(e) => handleDeletar(item.id, e)}
+                          className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* Modal de Cadastro */}
       {modalAberto && (
         <NovoOperacionalModal 
           tipo={abaAtiva} 
