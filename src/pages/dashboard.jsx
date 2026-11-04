@@ -16,11 +16,11 @@ function Dashboard() {
   useEffect(() => {
     async function carregarDadosReais() {
       try {
-        // Buscando equipamentos, alertas e a série temporal de medições em paralelo
+        // Buscando equipamentos, alertas e a série temporal de medições em paralelo (sem duplicar /api)
         const [resEquipamentos, resAlertas, resMedicoes] = await Promise.all([
           api.get('/equipamentos').catch(() => ({ data: [] })),
           api.get('/alertas').catch(() => ({ data: [] })),
-          api.get('/api/medicoes/serie-temporal', { params: { id_pzem: 1, horas: 24 } }).catch(() => ({ data: { dados: [] } }))
+          api.get('/medicoes/serie-temporal', { params: { id_pzem: 1, horas: 24 } }).catch(() => ({ data: { dados: [] } }))
         ]);
 
         console.log("Dados recebidos do back-end:", {
@@ -47,7 +47,6 @@ function Dashboard() {
         // Calcula métricas reais para os cards
         const ultimaLeitura = ultimosDados.length > 0 ? ultimosDados[ultimosDados.length - 1] : null;
         
-        // Exemplo de cálculo de dispositivos ativos vs offline baseados na lista real
         const dispositivosAtivos = listaEquipamentos.filter(eq => eq.status === 'Ativo' || eq.status === 'online').length || 24;
         const dispositivosOffline = listaAlertas.filter(al => al.status === 'ativo' && al.categoria === 'comunicacao').length || 3;
 
@@ -56,7 +55,7 @@ function Dashboard() {
           prevCards.map((card, index) => {
             // Posição 0: Tensão (última leitura PZEM)
             if (index === 0 && ultimaLeitura) {
-              return { ...card, value: `${Number(ultimaLeitura.tensao).toFixed(2)} V` };
+              return { ...card, value: `${Number(ultimaLeitura.tensao || 0).toFixed(2)} V` };
             }
             // Posição 1: Dispositivos Ativos
             if (index === 1) {
@@ -66,17 +65,17 @@ function Dashboard() {
             if (index === 2) {
               return { ...card, value: `${dispositivosOffline}` };
             }
-            // Posição 3: Economia de Energia (pode vir da leitura ou manter estimativa)
+            // Posição 3: Fator de Potência / Economia
             if (index === 3 && ultimaLeitura) {
-              return { ...card, value: `${Number(ultimaLeitura.fator_potencia * 20).toFixed(1)}%` };
+              return { ...card, value: `${Number(ultimaLeitura.fator_potencia || 0).toFixed(1)}%` };
             }
             // Posição 4: Alertas / Offline adicionais
             if (index === 4) {
               return { ...card, value: `${listaAlertas.length}` };
             }
-            // Posição 5: Outro indicador (ex: Corrente ou Potência geral)
+            // Posição 5: Corrente geral
             if (index === 5 && ultimaLeitura) {
-              return { ...card, value: `${Number(ultimaLeitura.corrente).toFixed(1)} A` };
+              return { ...card, value: `${Number(ultimaLeitura.corrente || 0).toFixed(1)} A` };
             }
             return card;
           })
@@ -110,8 +109,9 @@ function Dashboard() {
       
       <CalculoButton />
       
-      <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        {summaryCards.map((item) => (
+      {/* .slice(0, -2) remove os 2 últimos cards da listagem */}
+      <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {summaryCards.slice(0, -2).map((item) => (
           <StatCard key={item.label} item={item} />
         ))}
       </section>

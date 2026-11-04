@@ -6,14 +6,14 @@ import {
   XCircle, 
   Search, 
   Plus, 
-  Trash2,
   Pencil,
   Layers,
   MapPin,
   Zap,
   ArrowLeft,
+  Save,
   AlertCircle,
-  Save
+  Clock
 } from 'lucide-react';
 import NovoOperacionalModal from '../components/operacional/NovoOperacionalModal';
 import api from '../services/api';
@@ -25,37 +25,57 @@ export default function Operacional() {
   const [modalAberto, setModalAberto] = useState(false);
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState(null);
 
-  // Estados limpos (vazios) para coletar e carregar dados reais da aplicação/back-end
   const [equipamentos, setEquipamentos] = useState([]);
   const [setores, setSetores] = useState([]);
   const [locais, setLocais] = useState([]);
 
   const [formEdicao, setFormEdicao] = useState({});
 
-  // Carrega dados de Equipamentos, Setores e Locais do Back-end ao iniciar
-  useEffect(() => {
-    async function carregarDadosGlobaisAPI() {
-      try {
-        const [resEquipamentos, resSetores, resLocais] = await Promise.all([
-          api.get('/equipamentos').catch(() => ({ data: [] })),
-          api.get('/setores').catch(() => ({ data: [] })),
-          api.get('/locais').catch(() => ({ data: [] }))
-        ]);
+  // Função para carregar dados e relacionar Equipamentos com Setores e Locais do MySQL
+  const carregarDadosOperacionais = async () => {
+    try {
+      const [resEquipamentos, resSetores, resLocais] = await Promise.all([
+        api.get('/equipamentos').catch(() => ({ data: [] })),
+        api.get('/setores').catch(() => ({ data: [] })),
+        api.get('/locais').catch(() => ({ data: [] }))
+      ]);
 
-        if (resEquipamentos.data && Array.isArray(resEquipamentos.data)) {
-          setEquipamentos(resEquipamentos.data);
-        }
-        if (resSetores.data && Array.isArray(resSetores.data)) {
-          setSetores(resSetores.data);
-        }
-        if (resLocais.data && Array.isArray(resLocais.data)) {
-          setLocais(resLocais.data);
-        }
-      } catch (error) {
-        console.log("Aguardando conexão com as APIs do back-end...");
-      }
+      const listaEquipamentos = Array.isArray(resEquipamentos.data) 
+        ? resEquipamentos.data 
+        : (resEquipamentos.data?.dados || resEquipamentos.data?.equipamentos || []);
+
+      const listaSetores = Array.isArray(resSetores.data) 
+        ? resSetores.data 
+        : (resSetores.data?.dados || resSetores.data?.setores || []);
+
+      const listaLocais = Array.isArray(resLocais.data) 
+        ? resLocais.data 
+        : (resLocais.data?.dados || resLocais.data?.locais || []);
+
+      // Cruza o id_setor com o setor e o local correspondente para exibição correta na tabela
+      const equipamentosEnriquecidos = listaEquipamentos.map(eq => {
+        const setorEncontrado = listaSetores.find(s => s.id === eq.id_setor || s.id_setor === eq.id_setor);
+        const localEncontrado = listaLocais.find(l => l.id === setorEncontrado?.id_local);
+
+        return {
+          ...eq,
+          nomeSetor: setorEncontrado ? setorEncontrado.nome : (eq.setor || 'Setor Padrão'),
+          nomeLocal: localEncontrado ? localEncontrado.nome : (eq.local || 'Planta Industrial')
+        };
+      });
+
+      setEquipamentos(equipamentosEnriquecidos);
+      setSetores(listaSetores);
+      setLocais(listaLocais);
+    } catch (error) {
+      console.error("Erro ao sincronizar dados operacionais com o banco:", error);
     }
-    carregarDadosGlobaisAPI();
+  };
+
+  useEffect(() => {
+    carregarDadosOperacionais();
+    const intervalo = setInterval(carregarDadosOperacionais, 5000);
+    return () => clearInterval(intervalo);
   }, []);
 
   const handleSelecionarEquipamento = (item) => {
@@ -67,217 +87,297 @@ export default function Operacional() {
     setFormEdicao(prev => ({ ...prev, [campo]: valor }));
   };
 
-  // Salvar Alterações de Equipamento (PUT / PATCH)
+  // Salvar Alterações (PUT) no Banco de Dados
   const handleSalvarAlteracoes = async () => {
     try {
-      await api.put(`/equipamentos/${formEdicao.id}`, formEdicao).catch(() => {});
-      setEquipamentos(prev => 
-        prev.map(eq => eq.id === formEdicao.id ? formEdicao : eq)
-      );
-      alert('Alterações salvas com sucesso no banco!');
+      await api.put(`/equipamentos/${formEdicao.id}`, formEdicao);
+      alert('Alterações salvas com sucesso no banco de dados!');
       setEquipamentoSelecionado(null);
+      carregarDadosOperacionais();
     } catch (error) {
-      console.error("Erro ao salvar alterações:", error);
-      alert('Erro ao salvar alterações.');
+      console.error("Erro ao atualizar no banco:", error);
+      alert('Erro ao salvar alterações no banco.');
     }
   };
 
-  // Cadastrar Novo Item (POST)
+  // Cadastrar Novo Item (POST) com suporte adequado ao LocalService do back-end
   const handleSalvarNovo = async (novoItem) => {
     try {
       if (abaAtiva === 'Equipamentos') {
-        const res = await api.post('/equipamentos', novoItem).catch(() => ({ data: { id: Date.now(), ...novoItem } }));
-        setEquipamentos(prev => [res.data || { id: Date.now(), ...novoItem }, ...prev]);
+        const payload = {
+          nome: novoItem.nome,
+          codigo: novoItem.codigo || `EQ-${Math.floor(Math.random() * 900 + 100)}`,
+          id_setor: novoItem.id_setor ? Number(novoItem.id_setor) : 1,
+          status: novoItem.status || 'Ativo',
+          potencia_nominal: novoItem.potencia_nominal || 0
+        };
+        await api.post('/equipamentos', payload);
       } else if (abaAtiva === 'Setores') {
-        const res = await api.post('/setores', novoItem).catch(() => ({ data: { id: Date.now(), ...novoItem } }));
-        setSetores(prev => [res.data || { id: Date.now(), ...novoItem }, ...prev]);
+        const payload = {
+          nome: novoItem.nome,
+          codigo: novoItem.codigo || `SET-${Math.floor(Math.random() * 900 + 100)}`,
+          id_local: novoItem.id_local ? Number(novoItem.id_local) : 1,
+          status: novoItem.status || 'Ativo'
+        };
+        await api.post('/setores', payload);
       } else {
-        const res = await api.post('/locais', novoItem).catch(() => ({ data: { id: Date.now(), ...novoItem } }));
-        setLocais(prev => [res.data || { id: Date.now(), ...novoItem }, ...prev]);
+        const payload = {
+          nome: novoItem.nome,
+          codigo: novoItem.codigo || `LOC-${Math.floor(Math.random() * 900 + 100)}`,
+          endereco: novoItem.endereco || novoItem.localizacao || 'Planta Principal',
+          status: novoItem.status || 'Ativo',
+          id_empresa: novoItem.id_empresa ? Number(novoItem.id_empresa) : 1
+        };
+        await api.post('/locais', payload);
       }
-      alert('Item cadastrado com sucesso!');
+      
+      alert('Item cadastrado com sucesso no banco!');
       setModalAberto(false);
+      carregarDadosOperacionais();
     } catch (error) {
-      console.error("Erro ao cadastrar novo item:", error);
-      alert('Erro ao salvar no back-end.');
+      console.error("Erro ao cadastrar no banco:", error);
+      alert('Erro ao salvar no back-end / banco de dados. Verifique os campos preenchidos.');
     }
   };
 
-  // Deletar Item (DELETE)
-  const handleDeletar = async (id, e) => {
-    e.stopPropagation();
-    if (!window.confirm('Tem certeza que deseja excluir este item permanentemente?')) return;
-
-    try {
-      if (abaAtiva === 'Equipamentos') {
-        await api.delete(`/equipamentos/${id}`).catch(() => {});
-        setEquipamentos(prev => prev.filter(item => item.id !== id));
-      } else if (abaAtiva === 'Setores') {
-        await api.delete(`/setores/${id}`).catch(() => {});
-        setSetores(prev => prev.filter(item => item.id !== id));
-      } else {
-        await api.delete(`/locais/${id}`).catch(() => {});
-        setLocais(prev => prev.filter(item => item.id !== id));
-      }
-      alert('Item excluído com sucesso!');
-    } catch (error) {
-      console.error("Erro ao deletar:", error);
-      alert('Erro ao excluir item.');
-    }
-  };
-
+  // Filtros de Pesquisa e Status
   const itensFiltrados = () => {
-    if (abaAtiva === 'Equipamentos') {
-      return equipamentos.filter(i => i.nome?.toLowerCase().includes(pesquisa.toLowerCase()) && (filtroStatus === 'Todos' || i.status === filtroStatus));
-    } else if (abaAtiva === 'Setores') {
-      return setores.filter(i => i.nome?.toLowerCase().includes(pesquisa.toLowerCase()) && (filtroStatus === 'Todos' || i.status === filtroStatus));
-    } else {
-      return locais.filter(i => i.nome?.toLowerCase().includes(pesquisa.toLowerCase()) && (filtroStatus === 'Todos' || i.status === filtroStatus));
-    }
+    let dadosAtuais = [];
+    if (abaAtiva === 'Equipamentos') dadosAtuais = equipamentos;
+    else if (abaAtiva === 'Setores') dadosAtuais = setores;
+    else dadosAtuais = locais;
+
+    return dadosAtuais.filter(item => {
+      const matchNome = item.nome?.toLowerCase().includes(pesquisa.toLowerCase()) || 
+                        item.codigo?.toLowerCase().includes(pesquisa.toLowerCase());
+      
+      const matchStatus = filtroStatus === 'Todos' || 
+                          item.status === filtroStatus || 
+                          (filtroStatus === 'Ativo' && (item.status === 'Online' || item.status === 'Ativo')) ||
+                          (filtroStatus === 'Inativo' && (item.status === 'Offline' || item.status === 'Inativo' || item.status === 'Atenção'));
+
+      return matchNome && matchStatus;
+    });
   };
 
+  // TELA DE DETALHES DO EQUIPAMENTO SEGUINDO EXATAMENTE O PROTÓTIPO
   if (equipamentoSelecionado) {
     return (
       <main className="space-y-6 p-4 md:p-6 text-slate-200 min-h-screen bg-transparent">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-white">Detalhes do Equipamento</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Gerencie as informações e dados do dispositivo.</p>
-            </div>
-            <button 
-              onClick={() => alert('Redirecionando para medições completas...')}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-500 shadow-lg shadow-blue-600/20"
-            >
-              Ver Medições Completas +
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <button onClick={() => setEquipamentoSelecionado(null)} className="hover:text-blue-400 transition flex items-center gap-1">
-              <ArrowLeft size={14} /> Equipamentos
-            </button>
-            <span>/</span>
-            <span className="text-slate-200 font-medium">{formEdicao.nome}</span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md flex flex-wrap items-center justify-between gap-4">
+        {/* Barra Superior Informativa do Protótipo */}
+        <div className="flex flex-wrap items-center justify-between rounded-2xl border border-slate-800/80 bg-[#0C141F]/90 px-4 py-3 backdrop-blur-md gap-4 text-xs">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20">
-              <Cpu size={20} />
-            </div>
-            <div>
-              <h3 className="font-semibold text-white">{formEdicao.nome}</h3>
-              <p className="text-xs text-emerald-400 flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Última comunicação: há 5 segundos
-              </p>
-            </div>
+            <button onClick={() => setEquipamentoSelecionado(null)} className="text-slate-400 hover:text-blue-400 transition flex items-center gap-1">
+              <ArrowLeft size={16} /> Voltar
+            </button>
+            <div className="h-4 w-[1px] bg-slate-800" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Online
+            </span>
+            <span className="text-slate-400 flex items-center gap-1">
+              <Clock size={13} /> Última comunicação: há 3 segundos
+            </span>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
-            <span className="bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">Identificador: <strong className="text-white">{formEdicao.codigo}</strong></span>
-            <span className="bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">Local: <strong className="text-white">{formEdicao.local}</strong></span>
-            <span className="bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">Setor: <strong className="text-white">{formEdicao.setor}</strong></span>
+          <div className="text-slate-400 hidden xl:block">
+            <span className="text-slate-200 font-medium">{formEdicao.codigo || 'ESP32-008'}</span> &bull;{' '}
+            <span>{formEdicao.nomeLocal || 'Planta Industrial Jandira'}</span> &bull;{' '}
+            <span>{formEdicao.nomeSetor || 'Utilidades'}</span> &bull;{' '}
+            <span className="text-blue-400">{formEdicao.nome || 'Bomba'}</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-6 backdrop-blur-md space-y-5">
+        {/* Layout em Grid do Protótipo (Formulário à esquerda | Alarmes à direita) */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Formulário de Informações do Equipamento (Ocupa 2 colunas) */}
+          <div className="xl:col-span-2 rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-6 backdrop-blur-md space-y-5">
             <div>
               <h2 className="text-sm font-bold text-white">Informações do Equipamento</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Edite os dados diretamente e salve as alterações ao clicar em "Salvar Alterações".</p>
+              <p className="text-xs text-slate-400 mt-0.5">Edite os dados diretamente — as alterações só são salvas ao clicar em "Salvar Alterações".</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Nome</label>
-                <input type="text" value={formEdicao.nome || ''} onChange={(e) => handleInputChange('nome', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+                <input 
+                  type="text" 
+                  value={formEdicao.nome || ''} 
+                  onChange={(e) => handleInputChange('nome', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
+                />
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Identificação</label>
-                <input type="text" value={formEdicao.codigo || ''} onChange={(e) => handleInputChange('codigo', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+                <input 
+                  type="text" 
+                  value={formEdicao.codigo || ''} 
+                  onChange={(e) => handleInputChange('codigo', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
+                />
               </div>
+
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Fabricante</label>
-                <input type="text" value={formEdicao.fabricante || ''} onChange={(e) => handleInputChange('fabricante', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+                <input 
+                  type="text" 
+                  value={formEdicao.fabricante || 'ABB'} 
+                  onChange={(e) => handleInputChange('fabricante', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
+                />
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Modelo</label>
-                <input type="text" value={formEdicao.modelo || ''} onChange={(e) => handleInputChange('modelo', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+                <input 
+                  type="text" 
+                  value={formEdicao.modelo || 'ACQ580'} 
+                  onChange={(e) => handleInputChange('modelo', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
+                />
               </div>
+
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Número de Série</label>
-                <input type="text" value={formEdicao.numeroSerie || ''} onChange={(e) => handleInputChange('numeroSerie', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+                <input 
+                  type="text" 
+                  value={formEdicao.numero_serie || 'ABB-ACQ-58008'} 
+                  onChange={(e) => handleInputChange('numero_serie', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
+                />
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Tensão Nominal (V)</label>
-                <input type="text" value={formEdicao.tensaoNominal || ''} onChange={(e) => handleInputChange('tensaoNominal', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+                <input 
+                  type="text" 
+                  value={formEdicao.tensao_nominal || '380'} 
+                  onChange={(e) => handleInputChange('tensao_nominal', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
+                />
               </div>
-              <div>
+
+              <div className="sm:col-span-2">
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Data de Instalação</label>
-                <input type="text" value={formEdicao.dataInstalacao || ''} onChange={(e) => handleInputChange('dataInstalacao', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" />
+                <input 
+                  type="text" 
+                  value={formEdicao.data_instalacao || '21/03/2025'} 
+                  onChange={(e) => handleInputChange('data_instalacao', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
+                />
               </div>
+
               <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Setor</label>
-                <select value={formEdicao.setor || ''} onChange={(e) => handleInputChange('setor', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition">
-                  <option>Utilidades</option>
-                  <option>HVAC</option>
-                  <option>Produção</option>
-                  <option>Manutenção</option>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Local</label>
+                <select 
+                  value={formEdicao.nomeLocal || ''} 
+                  onChange={(e) => handleInputChange('nomeLocal', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition"
+                >
+                  <option value="Planta Industrial Jandira">Planta Industrial Jandira</option>
+                  {locais.map(l => <option key={l.id} value={l.nome}>{l.nome}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Local</label>
-                <select value={formEdicao.local || ''} onChange={(e) => handleInputChange('local', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition">
-                  <option>Planta Industrial Jandira</option>
-                  <option>Planta Industrial Osasco</option>
-                  <option>Centro Logístico Alphaville</option>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Setor</label>
+                <select 
+                  value={formEdicao.nomeSetor || ''} 
+                  onChange={(e) => handleInputChange('nomeSetor', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition"
+                >
+                  <option value="Utilidades">Utilidades</option>
+                  <option value="Produção">Produção</option>
+                  {setores.map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Tipo</label>
+                <select 
+                  value={formEdicao.tipo || 'Bomba'} 
+                  onChange={(e) => handleInputChange('tipo', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition"
+                >
+                  <option value="Bomba">Bomba</option>
+                  <option value="Motor">Motor</option>
+                  <option value="Compressor">Compressor</option>
                 </select>
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Status</label>
-                <select value={formEdicao.status || ''} onChange={(e) => handleInputChange('status', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition">
-                  <option>Online</option>
-                  <option>Atenção</option>
-                  <option>Offline</option>
+                <select 
+                  value={formEdicao.status || 'Ativo'} 
+                  onChange={(e) => handleInputChange('status', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition"
+                >
+                  <option value="Ativo">Ativo</option>
+                  <option value="Inativo">Inativo</option>
                 </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Descrição</label>
+                <textarea 
+                  rows={3}
+                  value={formEdicao.descricao || 'Descreva o equipamento, localização física, observações...'} 
+                  onChange={(e) => handleInputChange('descricao', e.target.value)} 
+                  className="w-full rounded-xl border border-slate-800 bg-[#101827] p-3.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition resize-none" 
+                />
               </div>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Descrição</label>
-              <textarea rows={3} value={formEdicao.descricao || ''} onChange={(e) => handleInputChange('descricao', e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition resize-none" />
-            </div>
-
             <div className="flex justify-end pt-2">
-              <button onClick={handleSalvarAlteracoes} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-500 shadow-lg shadow-blue-600/20">
+              <button 
+                onClick={handleSalvarAlteracoes} 
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-500 shadow-lg shadow-blue-600/20"
+              >
                 <Save size={15} /> Salvar Alterações
               </button>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-6 backdrop-blur-md space-y-4">
-            <div>
-              <h2 className="text-sm font-bold text-white">Alarmes do Equipamento</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Eventos de alerta gerados para o dispositivo.</p>
+          {/* Painel Lateral de Alarmes do Equipamento (Ocupa 1 coluna) */}
+          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-5 backdrop-blur-md space-y-4 h-fit">
+            <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-white">Alarmes do Equipamento</h3>
+                <p className="text-[11px] text-slate-400">Eventos de alerta gerados por este dispositivo</p>
+              </div>
+              <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-300 text-xs font-bold flex items-center justify-center">3</span>
             </div>
 
             <div className="space-y-3">
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs space-y-1">
-                <div className="flex items-center justify-between text-rose-400 font-semibold">
-                  <span className="flex items-center gap-1.5"><AlertCircle size={14} /> Sobretensão detectada</span>
-                  <span className="text-[10px] text-slate-400">há 5 min</span>
+              {/* Alarme Crítico */}
+              <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <AlertTriangle size={14} className="text-rose-400" /> Sobretensão detectada
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[9px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">Crítico</span>
                 </div>
-                <p className="text-slate-300 text-[11px]">Tensao &gt; 250V | Atual: 254V</p>
+                <p className="text-[11px] text-slate-400">Tensão &gt; 250 V (atual: 263 V)</p>
+                <p className="text-[10px] text-slate-500 pt-1">Hoje, 14:32</p>
               </div>
 
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs space-y-1">
-                <div className="flex items-center justify-between text-amber-400 font-semibold">
-                  <span className="flex items-center gap-1.5"><AlertTriangle size={14} /> Corrente elevada</span>
-                  <span className="text-[10px] text-slate-400">há 18 min</span>
+              {/* Alarme Alerta */}
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <AlertTriangle size={14} className="text-amber-400" /> Corrente elevada
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[9px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">Alerta</span>
                 </div>
-                <p className="text-slate-300 text-[11px]">Corrente &gt; 50A | Atual: 54.3A</p>
+                <p className="text-[11px] text-slate-400">Corrente &gt; 80 A (atual: 84,3 A)</p>
+                <p className="text-[10px] text-slate-500 pt-1">Hoje, 12:15</p>
+              </div>
+
+              {/* Alarme Aviso */}
+              <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <AlertCircle size={14} className="text-blue-400" /> Temperatura interna alta
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[9px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">Aviso</span>
+                </div>
+                <p className="text-[11px] text-slate-400">Temp. &gt; 70°C (atual: 71,2°C)</p>
+                <p className="text-[10px] text-slate-500 pt-1">Ontem, 23:47</p>
               </div>
             </div>
           </div>
@@ -286,8 +386,10 @@ export default function Operacional() {
     );
   }
 
+  // TELA PRINCIPAL (Lista de Equipamentos / Setores / Locais)
   return (
     <main className="space-y-6 p-4 md:p-6 text-slate-200 min-h-screen bg-transparent">
+      {/* Abas Superiores (Equipamentos | Setores | Locais) */}
       <div className="flex border-b border-slate-800/60 gap-8">
         {['Equipamentos', 'Setores', 'Locais'].map((aba) => (
           <button
@@ -304,6 +406,7 @@ export default function Operacional() {
         ))}
       </div>
 
+      {/* Barra de Pesquisa, Filtros e Botão de Adicionar */}
       <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3 flex-1">
           <div className="relative min-w-[260px] flex-1 sm:flex-none">
@@ -338,81 +441,7 @@ export default function Operacional() {
         </button>
       </div>
 
-      {abaAtiva === 'Equipamentos' && (
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20"><Cpu size={18} /></div><span className="text-[10px] text-blue-400 font-medium">Total</span></div>
-            <h3 className="text-2xl font-bold text-white">{equipamentos.length}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Total de Equipamentos</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><CheckCircle2 size={18} /></div><span className="text-[10px] text-emerald-400 font-medium">Online</span></div>
-            <h3 className="text-2xl font-bold text-white">{equipamentos.filter(e => e.status === 'Online').length}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Equipamentos Online</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20"><AlertTriangle size={18} /></div><span className="text-[10px] text-amber-400 font-medium">Atenção</span></div>
-            <h3 className="text-2xl font-bold text-white">{equipamentos.filter(e => e.status === 'Atenção').length}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Em Atenção</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20"><XCircle size={18} /></div><span className="text-[10px] text-rose-400 font-medium">Offline</span></div>
-            <h3 className="text-2xl font-bold text-white">{equipamentos.filter(e => e.status === 'Offline').length}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Offline</p>
-          </div>
-        </section>
-      )}
-
-      {abaAtiva === 'Setores' && (
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20"><Layers size={18} /></div></div>
-            <h3 className="text-2xl font-bold text-white">{setores.length}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Total de Setores</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><CheckCircle2 size={18} /></div></div>
-            <h3 className="text-2xl font-bold text-white">{setores.filter(s => s.status === 'Ativo').length}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Setores Ativos</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20"><Cpu size={18} /></div></div>
-            <h3 className="text-2xl font-bold text-white">{equipamentos.length}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Equipamentos Totais</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20"><Zap size={18} /></div></div>
-            <h3 className="text-2xl font-bold text-white">0,0 kWh</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Consumo Agregado</p>
-          </div>
-        </section>
-      )}
-
-      {abaAtiva === 'Locais' && (
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20"><MapPin size={18} /></div></div>
-            <h3 className="text-2xl font-bold text-white">{locais.length}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Total de Locais</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><CheckCircle2 size={18} /></div></div>
-            <h3 className="text-2xl font-bold text-white">{locais.filter(l => l.status === 'Ativo').length}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Locais Ativos</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20"><Layers size={18} /></div></div>
-            <h3 className="text-2xl font-bold text-white">{setores.length}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Setores Vinculados</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-3"><div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-blue-500/20"><Zap size={18} /></div></div>
-            <h3 className="text-2xl font-bold text-white">0,0 kWh</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Consumo Total</p>
-          </div>
-        </section>
-      )}
-
+      {/* Tabela de Dados */}
       <section className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 backdrop-blur-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] border-collapse text-left text-xs">
@@ -431,7 +460,7 @@ export default function Operacional() {
               {itensFiltrados().length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-5 py-8 text-center text-slate-400 text-xs">
-                    Nenhum registro encontrado. Cadastre novos itens pelo botão acima ou verifique a conexão com o back-end.
+                    Nenhum registo encontrado. Cadastre novos itens pelo botão acima.
                   </td>
                 </tr>
               ) : (
@@ -439,9 +468,7 @@ export default function Operacional() {
                   <tr 
                     key={item.id} 
                     onClick={() => {
-                      if (abaAtiva === 'Equipamentos') {
-                        handleSelecionarEquipamento(item);
-                      }
+                      if (abaAtiva === 'Equipamentos') handleSelecionarEquipamento(item);
                     }}
                     className={`transition hover:bg-slate-900/40 ${abaAtiva === 'Equipamentos' ? 'cursor-pointer' : ''}`}
                   >
@@ -449,19 +476,17 @@ export default function Operacional() {
                       <p className="font-semibold text-slate-200 hover:text-blue-400 transition">{item.nome}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">{item.codigo || item.id}</p>
                     </td>
-                    <td className="px-4 py-4 text-slate-300">{item.local || item.setores}</td>
-                    <td className="px-4 py-4 text-slate-300">{item.setor || item.equipamentosVinc || item.equipamentos}</td>
-                    <td className="px-4 py-4 text-slate-300 font-medium">{item.potencia || item.consumo}</td>
-                    {abaAtiva === 'Equipamentos' && <td className="px-4 py-4 text-slate-300 font-medium">{item.consumo}</td>}
+                    <td className="px-4 py-4 text-slate-300">{abaAtiva === 'Equipamentos' ? (item.nomeLocal || '-') : (item.local || item.setores || '-')}</td>
+                    <td className="px-4 py-4 text-slate-300">{abaAtiva === 'Equipamentos' ? (item.nomeSetor || '-') : (item.setor || '-')}</td>
+                    <td className="px-4 py-4 text-slate-300 font-medium">{item.potencia_nominal ? `${item.potencia_nominal} W` : (item.potencia || '0.0')}</td>
+                    {abaAtiva === 'Equipamentos' && <td className="px-4 py-4 text-slate-300 font-medium">{item.consumo || '0.0 kWh'}</td>}
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border ${
                         item.status === 'Online' || item.status === 'Ativo'
                           ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                          : item.status === 'Atenção'
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
                           : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
                       }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'Online' || item.status === 'Ativo' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                         {item.status}
                       </span>
                     </td>
@@ -469,17 +494,13 @@ export default function Operacional() {
                       <div className="flex items-center justify-center gap-2">
                         <button 
                           onClick={(e) => {
+                            e.stopPropagation();
                             if (abaAtiva === 'Equipamentos') handleSelecionarEquipamento(item);
                           }}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                          title="Editar"
                         >
                           <Pencil size={15} />
-                        </button>
-                        <button 
-                          onClick={(e) => handleDeletar(item.id, e)}
-                          className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition"
-                        >
-                          <Trash2 size={15} />
                         </button>
                       </div>
                     </td>
