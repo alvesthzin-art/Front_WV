@@ -1,211 +1,240 @@
-import React, { useState } from 'react';
 
-// Dados com variações suaves para simular o período de 24h
-const dadosTensao = [
-  { horario: '09:26', tensao: 224 },
-  { horario: '10:00', tensao: 226 },
-  { horario: '10:40', tensao: 225 },
-  { horario: '11:20', tensao: 227 },
-  { horario: '12:00', tensao: 226 },
-  { horario: '12:26', tensao: 226 },
-  { horario: '13:10', tensao: 231 },
-  { horario: '14:00', tensao: 234 },
-  { horario: '14:40', tensao: 236 },
-  { horario: '15:26', tensao: 232 },
-  { horario: '16:10', tensao: 234 },
-  { horario: '17:00', tensao: 233 },
-  { horario: '17:40', tensao: 237 },
-  { horario: '18:26', tensao: 242 },
-  { horario: '19:10', tensao: 246 },
-  { horario: '19:50', tensao: 242 },
-  { horario: '20:30', tensao: 242 },
-  { horario: '21:26', tensao: 241 },
-  { horario: '22:10', tensao: 237 },
-  { horario: '23:00', tensao: 241 },
-  { horario: '00:26', tensao: 243 },
-  { horario: '01:10', tensao: 243 },
-  { horario: '02:00', tensao: 242 },
-  { horario: '02:40', tensao: 237 },
-  { horario: '03:26', tensao: 238 },
-  { horario: '04:10', tensao: 241 },
-  { horario: '05:00', tensao: 242 },
-  { horario: '05:40', tensao: 246 },
-  { horario: '06:26', tensao: 253 },
-  { horario: '07:10', tensao: 250 },
-  { horario: '08:00', tensao: 254 },
-  { horario: '09:00', tensao: 255 },
-];
+import React, { useMemo } from 'react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from 'recharts';
 
-function gerarCaminhoSuave(pontos) {
-  if (pontos.length < 2) return '';
-  let d = `M ${pontos[0].x},${pontos[0].y}`;
+const CONFIGURACAO = {
+  Tensão: {
+    campo: 'tensao',
+    unidade: 'V',
+    cor: '#3b82f6',
+  },
+  Corrente: {
+    campo: 'corrente',
+    unidade: 'A',
+    cor: '#22c55e',
+  },
+  Potência: {
+    campo: 'potencia_ativa',
+    alternativa: 'potencia',
+    unidade: 'W',
+    cor: '#14b8a6',
+  },
+  Energia: {
+    campo: 'energia_acumulada',
+    alternativa: 'energia',
+    unidade: 'kWh',
+    cor: '#eab308',
+  },
+};
 
-  for (let i = 0; i < pontos.length - 1; i++) {
-    const p0 = pontos[i === 0 ? i : i - 1];
-    const p1 = pontos[i];
-    const p2 = pontos[i + 1];
-    const p3 = pontos[i + 2] || p2;
+function converterData(data) {
+  if (!data) return null;
 
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
+  const resultado = new Date(String(data).replace(' ', 'T'));
 
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
-  }
-
-  return d;
+  return Number.isNaN(resultado.getTime()) ? null : resultado;
 }
 
-export default function TensaoAoLongoDoTempo() {
-  const [periodo, setPeriodo] = useState('24h');
+function inicioDoPeriodo(periodo) {
+  const agora = new Date();
 
-  // Proporção panorâmica (achatada)
-  const largura = 1000;
-  const altura = 210;
+  if (periodo === 'Hoje') {
+    const inicio = new Date(agora);
+    inicio.setHours(0, 0, 0, 0);
+    return inicio.getTime();
+  }
 
-  const margem = {
-    superior: 15,
-    inferior: 30,
-    esquerda: 40,
-    direita: 15,
+  if (periodo === 'Ontem') {
+    const inicio = new Date(agora);
+    inicio.setDate(inicio.getDate() - 1);
+    inicio.setHours(0, 0, 0, 0);
+    return inicio.getTime();
+  }
+
+  if (periodo === 'Últimos 7 dias') {
+    return agora.getTime() - 7 * 24 * 60 * 60 * 1000;
+  }
+
+  if (periodo === 'Últimos 30 dias') {
+    return agora.getTime() - 30 * 24 * 60 * 60 * 1000;
+  }
+
+  return agora.getTime() - 24 * 60 * 60 * 1000;
+}
+
+export default function TensaoAoLongoDoTempo({
+  dados = [],
+  grandeza = 'Tensão',
+  periodo = 'Hoje',
+  carregando = false,
+}) {
+  const configuracao =
+    CONFIGURACAO[grandeza] || CONFIGURACAO.Tensão;
+
+  const dadosGrafico = useMemo(() => {
+    const inicio = inicioDoPeriodo(periodo);
+
+    return dados
+      .map((item) => {
+        const data = converterData(item.data_hora);
+
+        const valorOriginal =
+          item[configuracao.campo] ??
+          (configuracao.alternativa
+            ? item[configuracao.alternativa]
+            : null);
+
+        return {
+          instante: data ? data.getTime() : null,
+          valor: Number(valorOriginal),
+          horario: data
+            ? data.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            : '',
+        };
+      })
+      .filter(
+        (item) =>
+          item.instante !== null &&
+          item.instante >= inicio &&
+          Number.isFinite(item.valor)
+      )
+      .sort((a, b) => a.instante - b.instante);
+  }, [dados, configuracao, periodo]);
+
+  const escalaY = useMemo(() => {
+    if (dadosGrafico.length === 0) return [0, 10];
+
+    const valores = dadosGrafico.map((item) => item.valor);
+    const minimo = Math.min(...valores);
+    const maximo = Math.max(...valores);
+    const amplitude = maximo - minimo;
+
+    // Margem de 15% para não deixar a linha colada às bordas.
+    // Se os valores forem praticamente iguais, usa uma margem mínima.
+    const margem = amplitude > 0
+      ? amplitude * 0.15
+      : Math.max(Math.abs(minimo) * 0.02, 1);
+
+    return [
+      minimo - margem,
+      maximo + margem,
+    ];
+  }, [dadosGrafico]);
+
+  const formatarHorario = (timestamp) => {
+    return new Date(timestamp).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
-  const minimo = 211;
-  const maximo = 268;
-
-  const areaLargura = largura - margem.esquerda - margem.direita;
-  const areaAltura = altura - margem.superior - margem.inferior;
-
-  const pontos = dadosTensao.map((item, indice) => {
-    const x =
-      margem.esquerda +
-      (indice / (dadosTensao.length - 1)) * areaLargura;
-    const y =
-      margem.superior +
-      ((maximo - item.tensao) / (maximo - minimo)) * areaAltura;
-    return { x, y, horario: item.horario };
-  });
-
-  const dCurva = gerarCaminhoSuave(pontos);
-  const dArea = `${dCurva} L ${largura - margem.direita},${altura - margem.inferior} L ${margem.esquerda},${altura - margem.inferior} Z`;
-
-  const niveisY = [268, 256, 241, 226, 211];
-
-  // Rótulos do eixo X mostrados na imagem
-  const rotulosX = ['09:26', '12:26', '15:26', '18:26', '21:26', '00:26', '03:26', '06:26'];
-
   return (
-    <section className="rounded-2xl border border-[#141C2B] bg-[#070B15] p-5 shadow-2xl text-slate-200">
-      {/* Cabeçalho */}
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-medium tracking-wide text-slate-100">
-            Tensão ao Longo do Tempo
+          <h2 className="text-base font-semibold text-slate-100">
+            {grandeza} ao Longo do Tempo
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500">Leituras reais</p>
+          <p className="text-xs text-slate-400">
+            Histórico de medições · {periodo}
+          </p>
         </div>
 
-        {/* Seleção de Período */}
-        <div className="flex items-center gap-1 rounded-xl bg-[#0B1220] p-1 border border-[#162136]">
-          {['1h', '6h', '24h', '7d', '30d'].map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setPeriodo(item)}
-              className={`rounded-lg px-2.5 py-0.5 text-xs font-medium transition-all ${
-                periodo === item
-                  ? 'bg-[#1C3B6E] text-white shadow-sm ring-1 ring-[#2E5899]'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
+        <span className="text-xs text-slate-400">
+          {dadosGrafico.length} registros
+        </span>
+      </div>
+
+      {carregando && dadosGrafico.length === 0 ? (
+        <div className="flex h-56 items-center justify-center text-sm text-slate-400">
+          Carregando medições...
+        </div>
+      ) : dadosGrafico.length === 0 ? (
+        <div className="flex h-56 items-center justify-center text-sm text-slate-400">
+          Nenhuma medição encontrada neste período.
+        </div>
+      ) : (
+        <div className="h-56 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={dadosGrafico}
+              margin={{
+                top: 10,
+                right: 15,
+                left: 0,
+                bottom: 5,
+              }}
             >
-              {item}
-            </button>
-          ))}
+              <CartesianGrid
+                stroke="#334155"
+                strokeDasharray="3 3"
+                vertical={false}
+              />
+
+              <XAxis
+                dataKey="instante"
+                type="number"
+                scale="time"
+                domain={['dataMin', 'dataMax']}
+                tickFormatter={formatarHorario}
+                stroke="#94a3b8"
+                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                minTickGap={35}
+              />
+
+              <YAxis
+                type="number"
+                domain={escalaY}
+                stroke="#94a3b8"
+                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                width={55}
+                tickFormatter={(valor) => Number(valor).toFixed(1)}
+              />
+
+              <Tooltip
+                labelFormatter={formatarHorario}
+                formatter={(valor) => [
+                  `${Number(valor).toFixed(2)} ${configuracao.unidade}`,
+                  grandeza,
+                ]}
+                contentStyle={{
+                  backgroundColor: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#f8fafc',
+                }}
+              />
+
+              <Line
+                type="monotone"
+                dataKey="valor"
+                name={grandeza}
+                stroke={configuracao.cor}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 5 }}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
-      </div>
-
-      {/* Gráfico SVG */}
-      <div className="w-full overflow-hidden">
-        <svg
-          viewBox={`0 0 ${largura} ${altura}`}
-          className="h-auto w-full"
-        >
-          <defs>
-            <linearGradient id="gradienteTensao24h" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#1C4587" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#0B1830" stopOpacity="0.02" />
-            </linearGradient>
-          </defs>
-
-          {/* Linhas de Grade e Eixo Y */}
-          {niveisY.map((nivel) => {
-            const y =
-              margem.superior +
-              ((maximo - nivel) / (maximo - minimo)) * areaAltura;
-
-            return (
-              <g key={nivel}>
-                <line
-                  x1={margem.esquerda}
-                  y1={y}
-                  x2={largura - margem.direita}
-                  y2={y}
-                  stroke="#101827"
-                  strokeDasharray="3 3"
-                  strokeWidth="1"
-                />
-                <text
-                  x={margem.esquerda - 10}
-                  y={y + 4}
-                  fill="#3B4B66"
-                  fontSize="11"
-                  fontFamily="sans-serif"
-                  textAnchor="end"
-                >
-                  {nivel}
-                </text>
-              </g>
-            );
-          })}
-
-          {/* Sombra abaixo da linha */}
-          <path d={dArea} fill="url(#gradienteTensao24h)" />
-
-          {/* Linha principal */}
-          <path
-            d={dCurva}
-            fill="none"
-            stroke="#2B62B3"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Eixo X com Horários */}
-          {rotulosX.map((horario) => {
-            const pontoCorrespondente = pontos.find((p) => p.horario === horario);
-            const xPos = pontoCorrespondente
-              ? pontoCorrespondente.x
-              : margem.esquerda;
-
-            return (
-              <text
-                key={horario}
-                x={xPos}
-                y={altura - 4}
-                fill="#3B4B66"
-                fontSize="11"
-                fontFamily="sans-serif"
-                textAnchor="middle"
-              >
-                {horario}
-              </text>
-            );
-          })}
-        </svg>
-      </div>
-    </section>
+      )}
+    </div>
   );
 }
