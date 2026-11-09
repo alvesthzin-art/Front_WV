@@ -17,10 +17,12 @@ const HORAS_POR_PERIODO = {
   'Últimos 30 dias': 720,
 };
 
+// Janela móvel do gráfico: últimos 60 segundos.
+const JANELA_GRAFICO_MS = 60 * 1000;
+
 function converterData(data) {
   if (!data) return null;
 
-  // Trata DATETIME do MySQL no formato "YYYY-MM-DD HH:mm:ss".
   const valor = String(data).replace(' ', 'T');
   const dataConvertida = new Date(valor);
 
@@ -35,6 +37,9 @@ export default function Medicao() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
 
+  // Relógio usado somente para movimentar a janela do gráfico.
+  const [agoraGrafico, setAgoraGrafico] = useState(Date.now());
+
   const [filtros, setFiltros] = useState({
     local: 'Todos os locais',
     setor: 'Todos os setores',
@@ -48,6 +53,15 @@ export default function Medicao() {
     valorMaximo: '0.0',
     valorAtual: '0.0',
   });
+
+  // Atualiza o relógio a cada segundo para movimentar o eixo X.
+  useEffect(() => {
+    const intervaloRelogio = setInterval(() => {
+      setAgoraGrafico(Date.now());
+    }, 1000);
+
+    return () => clearInterval(intervaloRelogio);
+  }, []);
 
   useEffect(() => {
     let ativo = true;
@@ -69,7 +83,6 @@ export default function Medicao() {
 
         if (!ativo) return;
 
-        // Ordem cronológica: necessária para o gráfico.
         const dadosOrdenados = [...registros]
           .filter((item) => converterData(item.data_hora))
           .sort(
@@ -143,7 +156,28 @@ export default function Medicao() {
     };
   }, [filtros.periodo]);
 
-  // A tabela recebe os registros mais novos primeiro.
+  // Dados exclusivos do gráfico.
+  // Quando o período é Hoje, mostra somente os últimos 60 segundos.
+  // Nos outros períodos, mantém o histórico selecionado.
+  const dadosGrafico = useMemo(() => {
+    if (filtros.periodo !== 'Hoje') {
+      return dadosMedicoes;
+    }
+
+    const inicioJanela = agoraGrafico - JANELA_GRAFICO_MS;
+
+    return dadosMedicoes.filter((item) => {
+      const data = converterData(item.data_hora);
+
+      if (!data) return false;
+
+      const tempo = data.getTime();
+
+      return tempo >= inicioJanela && tempo <= agoraGrafico;
+    });
+  }, [dadosMedicoes, filtros.periodo, agoraGrafico]);
+
+  // A tabela continua recebendo o histórico completo.
   const dadosBrutos = useMemo(() => {
     return [...dadosMedicoes]
       .sort(
@@ -165,7 +199,6 @@ export default function Medicao() {
           corrente: item.corrente ?? '—',
           potencia: item.potencia_ativa ?? item.potencia ?? '—',
           energia: item.energia_acumulada ?? item.energia ?? '—',
-          // Mantém a data completa disponível para ordenação, se necessário.
           data_hora: item.data_hora,
         };
       });
@@ -220,9 +253,9 @@ export default function Medicao() {
         </p>
       )}
 
-      <section className="mt-6">
+      <section className="mt-6 min-w-0 overflow-hidden">
         <TensaoAoLongoDoTempo
-          dados={dadosMedicoes}
+          dados={dadosGrafico}
           grandeza={filtros.grandeza}
           periodo={filtros.periodo}
           carregando={carregando}
