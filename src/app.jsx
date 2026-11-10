@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 
-// Import das componentes Gerais
+// Import dos componentes Gerais
 import { Login } from './pages/login';
 import { Sidebar } from './components/layout/sidebar';
 import { Topbar } from './components/layout/topbar';
 import ConfiguracoesSistemaModal from './components/configuracoes/configuracoesSistemaModal';
 
-// Import das telas: 
+// Import das telas 
 import Dashboard from './pages/dashboard';
 import Medicao from './pages/medicoes';
 import Operacional from './pages/operacional';
 import Relatorios from './pages/relatorios';
+import Alarmes from './pages/alarmes'; // Importação da página de Alarmes
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -25,6 +26,9 @@ export default function App() {
       />
     );
   }
+
+  // Normalização do nome da página ativa para evitar inconsistências no Sidebar
+  const pageKey = activePage?.toLowerCase() || '';
 
   return (
     <div 
@@ -53,17 +57,19 @@ export default function App() {
           />
         )}
 
-        <main className="flex-1 p-4 md:p-8 bg-transparent">
-          {activePage === 'Dashboard' ? (
+        <main className="flex-1 bg-transparent">
+          {pageKey === 'dashboard' ? (
             <Dashboard />
-          ) : activePage === 'Medições' ? (
+          ) : pageKey === 'medições' || pageKey === 'medicoes' ? (
             <Medicao />
-          ) : activePage === 'Operacional' ? (
+          ) : pageKey === 'operacional' ? (
             <Operacional />
-          ) : activePage === 'Relatórios' ? (
+          ) : pageKey === 'relatórios' || pageKey === 'relatorios' ? (
             <Relatorios />
+          ) : pageKey === 'alarmes' ? (
+            <Alarmes />
           ) : (
-            <div className="rounded-card border border-slate-800/60 bg-slate-900/80 backdrop-blur-md p-6">
+            <div className="m-6 rounded-2xl border border-slate-800/60 bg-slate-900/80 backdrop-blur-md p-6">
               <h2 className="text-lg font-semibold text-white">
                 {activePage}
               </h2>
