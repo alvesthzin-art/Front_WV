@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 // Import das componentes Gerais
 import { Login } from './pages/login';
@@ -10,6 +10,7 @@ import ConfiguracoesSistemaModal from './components/configuracoes/configuracoesS
 import Dashboard from './pages/dashboard';
 import Medicao from './pages/medicoes';
 import Operacional from './pages/operacional';
+import Relatorios from './pages/relatorios';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -59,6 +60,8 @@ export default function App() {
             <Medicao />
           ) : activePage === 'Operacional' ? (
             <Operacional />
+          ) : activePage === 'Relatórios' ? (
+            <Relatorios />
           ) : (
             <div className="rounded-card border border-slate-800/60 bg-slate-900/80 backdrop-blur-md p-6">
               <h2 className="text-lg font-semibold text-white">

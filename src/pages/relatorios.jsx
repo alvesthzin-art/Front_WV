@@ -1,332 +1,335 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  RefreshCw, 
-  Download, 
-  Printer, 
-  Zap, 
-  TrendingUp, 
-  BarChart3, 
-  DollarSign, 
-  ArrowUpRight, 
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import {
   ArrowDownRight,
-  Calendar,
-  Filter
+  ArrowUpRight,
+  BarChart3,
+  Download,
+  DollarSign,
+  Printer,
+  RefreshCw,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
 import api from '../services/api';
 
+const HORAS_POR_PERIODO = {
+  Hoje: 24,
+  '6 horas': 6,
+  Ontem: 48,
+  'Últimos 7 dias': 168,
+  'Últimos 30 dias': 720,
+};
+
+const CUSTO_KWH = 0.8;
+
+const METRICAS = {
+  'Consumo (kWh)': { keys: ['energia', 'energia_acumulada', 'consumo'], unit: 'kWh', acumulada: true },
+  'Potência (kW)': { keys: ['potencia_ativa', 'potencia'], unit: 'kW' },
+  'Tensão (V)': { keys: ['tensao'], unit: 'V' },
+  'Corrente (A)': { keys: ['corrente'], unit: 'A' },
+};
+
+function extrairLista(resposta, chaves) {
+  if (Array.isArray(resposta?.data)) return resposta.data;
+  return chaves.reduce((lista, chave) => (
+    Array.isArray(resposta?.data?.[chave]) ? resposta.data[chave] : lista
+  ), []);
+}
+
+function converterData(valor) {
+  if (!valor) return null;
+  const data = new Date(String(valor).replace(' ', 'T'));
+  return Number.isNaN(data.getTime()) ? null : data;
+}
+
+function formatarNumero(valor, casas = 1) {
+  return Number(valor || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas,
+  });
+}
+
+function obterValor(item, metrica) {
+  const chave = metrica.keys.find((nome) => item[nome] !== undefined && item[nome] !== null);
+  const valor = chave ? Number(item[chave]) : NaN;
+  return Number.isFinite(valor) ? valor : null;
+}
+
+function agruparPorDia(registros, metrica) {
+  const grupos = new Map();
+
+  registros.forEach((item) => {
+    const data = converterData(item.data_hora);
+    const valor = obterValor(item, metrica);
+    if (!data || valor === null) return;
+
+    const chave = data.toISOString().slice(0, 10);
+    const grupo = grupos.get(chave) || { data, valores: [] };
+    grupo.valores.push(valor);
+    grupos.set(chave, grupo);
+  });
+
+  return [...grupos.values()]
+    .sort((a, b) => a.data - b.data)
+    .map((grupo, indice, todos) => {
+      const { valores } = grupo;
+      const total = valores.reduce((soma, valor) => soma + valor, 0);
+      const media = total / valores.length;
+      const valor = metrica.acumulada
+        ? Math.max(...valores) - Math.min(...valores)
+        : media;
+      const anterior = todos[indice - 1]?.valor;
+      const variacao = anterior ? ((valor - anterior) / anterior) * 100 : 0;
+
+      return {
+        data: grupo.data.toLocaleDateString('pt-BR'),
+        quantidade: valores.length,
+        valor,
+        minimo: Math.min(...valores),
+        maximo: Math.max(...valores),
+        variacao,
+      };
+    });
+}
+
 export default function Relatorios() {
-  const [abaAtiva, setAbaAtiva] = useState('Histórico');
   const [filtroPeriodo, setFiltroPeriodo] = useState('Últimos 7 dias');
   const [filtroMetrica, setFiltroMetrica] = useState('Consumo (kWh)');
   const [filtroLocal, setFiltroLocal] = useState('Todos');
   const [filtroSetor, setFiltroSetor] = useState('Todos');
-  
   const [locais, setLocais] = useState([]);
   const [setores, setSetores] = useState([]);
-  const [dadosRelatorio, setDadosRelatorio] = useState({
-    consumoTotal: '1.284,6',
-    consumoMedio: '42,8',
-    picoPotencia: '78,4 kW',
-    custoEstimado: 'R$ 1.027,68',
-    variacao: '+8,4%',
-    historicoDiario: [
-      { data: '23/09/2026', consumo: '1.284,6', custo: 'R$ 1.027,68', variacao: '+8,4%', tipo: 'alta' },
-      { data: '22/09/2026', consumo: '1.185,3', custo: 'R$ 948,24', variacao: '-3,2%', tipo: 'baixa' },
-      { data: '21/09/2026', consumo: '1.225,9', custo: 'R$ 980,72', variacao: '+5,1%', tipo: 'alta' },
-      { data: '20/09/2026', consumo: '1.166,0', custo: 'R$ 932,80', variacao: '-1,8%', tipo: 'baixa' },
-      { data: '19/09/2026', consumo: '1.187,6', custo: 'R$ 950,08', variacao: '+2,9%', tipo: 'alta' },
-      { data: '18/09/2026', consumo: '1.154,3', custo: 'R$ 923,44', variacao: '-4,7%', tipo: 'baixa' },
-      { data: '17/09/2026', consumo: '1.210,8', custo: 'R$ 968,64', variacao: '+6,3%', tipo: 'alta' },
-    ]
-  });
-  const [carregando, setCarregando] = useState(false);
-
-  // Carrega locais e setores reais do banco para popular os filtros dinamicamente
-  const carregarFiltrosIniciais = async () => {
-    try {
-      const [resLocais, resSetores] = await Promise.all([
-        api.get('/locais').catch(() => ({ data: [] })),
-        api.get('/setores').catch(() => ({ data: [] }))
-      ]);
-      setLocais(Array.isArray(resLocais.data) ? resLocais.data : (resLocais.data?.dados || []));
-      setSetores(Array.isArray(resSetores.data) ? resSetores.data : (resSetores.data?.dados || []));
-    } catch (error) {
-      console.error("Erro ao carregar filtros operacionais:", error);
-    }
-  };
+  const [registros, setRegistros] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+  const [atualizadoEm, setAtualizadoEm] = useState('');
 
   useEffect(() => {
-    carregarFiltrosIniciais();
+    let ativo = true;
+
+    async function carregarFiltros() {
+      const [resLocais, resSetores] = await Promise.all([
+        api.get('/locais').catch(() => ({ data: [] })),
+        api.get('/setores').catch(() => ({ data: [] })),
+      ]);
+      if (!ativo) return;
+      setLocais(extrairLista(resLocais, ['dados', 'locais']));
+      setSetores(extrairLista(resSetores, ['dados', 'setores']));
+    }
+
+    carregarFiltros();
+    return () => { ativo = false; };
   }, []);
 
-  // Função para atualizar / recarregar os dados do relatório com base nos filtros
-  const handleAtualizarDados = async () => {
-    setCarregando(true);
+  const carregarRelatorio = useCallback(async () => {
+    setErro('');
+
     try {
-      // Exemplo de requisição integrando com a série temporal do back-end
-      const res = await api.get('/medicoes/serie-temporal', { 
-        params: { periodo: filtroPeriodo, local: filtroLocal, setor: filtroSetor } 
-      }).catch(() => null);
+      const resposta = await api.get('/medicoes/serie-temporal', {
+        params: {
+          id_pzem: 1,
+          horas: HORAS_POR_PERIODO[filtroPeriodo] || 168,
+          local: filtroLocal !== 'Todos' ? filtroLocal : undefined,
+          setor: filtroSetor !== 'Todos' ? filtroSetor : undefined,
+        },
+      });
 
-      if (res?.data) {
-        // Se houver dados reais na API, processa aqui. Mantém estrutura consistente.
-        console.log("Dados de relatório atualizados:", res.data);
-      }
+      const dados = extrairLista(resposta, ['dados', 'medicoes']);
+      setRegistros(dados);
+      setAtualizadoEm(new Date().toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }));
     } catch (error) {
-      console.error("Erro ao atualizar dados do relatório:", error);
+      console.error('Erro ao carregar relatório:', error);
+      setErro('Não foi possível carregar as medições do período selecionado.');
+      setRegistros([]);
     } finally {
-      setTimeout(() => setCarregando(false), 600);
+      setCarregando(false);
     }
-  };
+  }, [filtroPeriodo, filtroLocal, filtroSetor]);
 
-  // Função para exportar / imprimir relatório em PDF
-  const handleExportarPDF = () => {
-    window.print(); // Abre a janela de impressão nativa do browser configurada para Salvar como PDF mantendo a folha estilizada
+  useEffect(() => {
+    const agendamento = setTimeout(() => {
+      void carregarRelatorio();
+    }, 0);
+    const intervalo = setInterval(() => {
+      void carregarRelatorio();
+    }, 10000);
+
+    return () => {
+      clearTimeout(agendamento);
+      clearInterval(intervalo);
+    };
+  }, [carregarRelatorio]);
+
+  const metrica = METRICAS[filtroMetrica];
+  const registrosValidos = useMemo(
+    () => registros.filter((item) => obterValor(item, metrica) !== null),
+    [registros, metrica]
+  );
+  const linhas = useMemo(
+    () => agruparPorDia(registrosValidos, metrica),
+    [registrosValidos, metrica]
+  );
+
+  const resumo = useMemo(() => {
+    const valores = registrosValidos.map((item) => obterValor(item, metrica));
+    const soma = valores.reduce((acumulado, valor) => acumulado + valor, 0);
+    const total = metrica.acumulada && valores.length > 1
+      ? Math.max(...valores) - Math.min(...valores)
+      : soma;
+    const media = metrica.acumulada
+      ? total / Math.max(linhas.length, 1)
+      : (valores.length ? total / valores.length : 0);
+    const pico = metrica.acumulada ? total : (valores.length ? Math.max(...valores) : 0);
+    const consumo = filtroMetrica === 'Consumo (kWh)' ? total : 0;
+
+    return {
+      principal: metrica.acumulada ? total : media,
+      media,
+      pico,
+      custo: consumo * CUSTO_KWH,
+    };
+  }, [registrosValidos, metrica, filtroMetrica, linhas.length]);
+
+  const imprimirRelatorio = () => window.print();
+
+  const exportarPDF = () => {
+    if (!registrosValidos.length) return;
+
+    const documento = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const titulo = 'Relatório de medições';
+    const nomeArquivo = `relatorio-${filtroPeriodo.toLowerCase().replaceAll(' ', '-')}.pdf`;
+
+    documento.setFontSize(18);
+    documento.text(titulo, 14, 16);
+    documento.setFontSize(10);
+    documento.text(`Período: ${filtroPeriodo} | Métrica: ${filtroMetrica}`, 14, 23);
+    documento.text(`Local: ${filtroLocal} | Setor: ${filtroSetor}`, 14, 29);
+    documento.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 35);
+
+    autoTable(documento, {
+      startY: 42,
+      head: [['Resumo', 'Valor']],
+      body: [
+        [metrica.acumulada ? 'Total do período' : 'Valor principal', `${formatarNumero(resumo.principal)} ${metrica.unit}`],
+        ['Média', `${formatarNumero(resumo.media)} ${metrica.unit}`],
+        ['Maior valor', `${formatarNumero(resumo.pico)} ${metrica.unit}`],
+        ['Custo estimado', `R$ ${formatarNumero(resumo.custo, 2)}`],
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [37, 99, 235] },
+    });
+
+    autoTable(documento, {
+      startY: documento.lastAutoTable.finalY + 8,
+      head: [['Data', 'Leituras', 'Média', 'Mínimo', 'Máximo', 'Variação']],
+      body: linhas.map((linha) => [
+        linha.data,
+        linha.quantidade,
+        `${formatarNumero(linha.valor)} ${metrica.unit}`,
+        `${formatarNumero(linha.minimo)} ${metrica.unit}`,
+        `${formatarNumero(linha.maximo)} ${metrica.unit}`,
+        `${linha.variacao >= 0 ? '+' : ''}${formatarNumero(linha.variacao)}%`,
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42] },
+    });
+
+    documento.save(nomeArquivo);
   };
 
   return (
-    <main className="min-h-screen p-4 md:p-6 text-slate-200 space-y-6 bg-transparent">
-      {/* Cabeçalho Superior da Página */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <main className="min-h-screen space-y-6 bg-transparent p-4 text-slate-200 md:p-6 print:bg-white print:p-0 print:text-black">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center print:hidden">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Relatórios</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Consulte, compare e projete o comportamento do consumo energético</p>
+          <h1 className="text-xl font-bold tracking-tight text-white md:text-2xl print:text-black">Relatórios</h1>
+          <p className="mt-0.5 text-xs text-slate-400">Medições consolidadas do período selecionado</p>
         </div>
-
-        {/* Botões de Ação Rápida */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button 
-            onClick={handleAtualizarDados}
-            disabled={carregando}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-[#0C141F] px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800/60 hover:text-white transition shadow-sm"
-          >
-            <RefreshCw size={14} className={carregando ? "animate-spin text-blue-400" : ""} />
-            Atualizar Dados
+        <div className="flex flex-wrap gap-2.5">
+          <button type="button" onClick={() => { setCarregando(true); void carregarRelatorio(); }} disabled={carregando} className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-[#0C141F] px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-50">
+            <RefreshCw size={14} className={carregando ? 'animate-spin text-blue-400' : ''} /> Atualizar Dados
           </button>
-
-          <button 
-            onClick={handleExportarPDF}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-[#0C141F] px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800/60 hover:text-white transition shadow-sm"
-          >
-            <Download size={14} />
-            Exportar Relatório
+          <button type="button" onClick={exportarPDF} disabled={carregando || !registrosValidos.length} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50">
+            <Download size={14} /> Exportar PDF
           </button>
-
-          <button 
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-[#0C141F] px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800/60 hover:text-white transition shadow-sm"
-          >
-            <Printer size={14} />
-            Imprimir
+          <button type="button" onClick={imprimirRelatorio} className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-[#0C141F] px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800">
+            <Printer size={14} /> Imprimir
           </button>
         </div>
       </div>
 
-      {/* Abas de Navegação de Relatórios */}
-      <div className="flex border-b border-slate-800/60 gap-8">
-        {['Histórico', 'Comparação', 'Previsibilidade', 'Gerados'].map((aba) => (
-          <button
-            key={aba}
-            onClick={() => setAbaAtiva(aba)}
-            className={`pb-3 text-sm font-semibold transition-colors relative ${
-              abaAtiva === aba 
-                ? 'text-blue-400 border-b-2 border-blue-500' 
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {aba}
-          </button>
-        ))}
-      </div>
-
-      {/* Barra de Filtros (Local, Setor, Equipamento, Métrica, Período) */}
-      <div className="flex flex-wrap items-center gap-3">
-        <select 
-          value={filtroLocal} 
-          onChange={(e) => setFiltroLocal(e.target.value)}
-          className="rounded-xl border border-slate-800 bg-[#0C141F] px-3.5 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-600 transition"
-        >
+      <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 print:hidden">
+        <select value={filtroPeriodo} onChange={(e) => setFiltroPeriodo(e.target.value)} className="rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-600">
+          {Object.keys(HORAS_POR_PERIODO).map((periodo) => <option key={periodo}>{periodo}</option>)}
+        </select>
+        <select value={filtroLocal} onChange={(e) => setFiltroLocal(e.target.value)} className="rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-600">
           <option value="Todos">Local: Todos</option>
-          {locais.map(l => <option key={l.id} value={l.nome}>{l.nome}</option>)}
+          {locais.map((local) => <option key={local.id ?? local.nome} value={local.nome}>{local.nome}</option>)}
         </select>
-
-        <select 
-          value={filtroSetor} 
-          onChange={(e) => setFiltroSetor(e.target.value)}
-          className="rounded-xl border border-slate-800 bg-[#0C141F] px-3.5 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-600 transition"
-        >
+        <select value={filtroSetor} onChange={(e) => setFiltroSetor(e.target.value)} className="rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-600">
           <option value="Todos">Setor: Todos</option>
-          {setores.map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
+          {setores.map((setor) => <option key={setor.id ?? setor.nome} value={setor.nome}>{setor.nome}</option>)}
         </select>
-
-        <select 
-          value={filtroMetrica} 
-          onChange={(e) => setFiltroMetrica(e.target.value)}
-          className="rounded-xl border border-slate-800 bg-[#0C141F] px-3.5 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-600 transition"
-        >
-          <option value="Consumo (kWh)">Consumo (kWh)</option>
-          <option value="Potência (kW)">Potência (kW)</option>
-          <option value="Tensão (V)">Tensão (V)</option>
-          <option value="Corrente (A)">Corrente (A)</option>
+        <select value={filtroMetrica} onChange={(e) => setFiltroMetrica(e.target.value)} className="rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-600">
+          {Object.keys(METRICAS).map((metricaNome) => <option key={metricaNome}>{metricaNome}</option>)}
         </select>
-
-        <select 
-          value={filtroPeriodo} 
-          onChange={(e) => setFiltroPeriodo(e.target.value)}
-          className="rounded-xl border border-slate-800 bg-[#0C141F] px-3.5 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-600 transition"
-        >
-          <option value="Últimos 7 dias">Últimos 7 dias</option>
-          <option value="Últimos 30 dias">Últimos 30 dias</option>
-          <option value="Hoje">Hoje</option>
-        </select>
-      </div>
-
-      {/* Cards de Resumo Estatístico Superior (5 Cards) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md space-y-2">
-          <div className="p-2 w-fit rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20"><Zap size={18} /></div>
-          <div>
-            <h3 className="text-xl font-bold text-white">{dadosRelatorio.consumoTotal} <span className="text-xs font-normal text-slate-400">kWh</span></h3>
-            <p className="text-xs text-slate-400 mt-0.5">Consumo Total <span className="block text-[10px] text-slate-500">no período selecionado</span></p>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md space-y-2">
-          <div className="p-2 w-fit rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><TrendingUp size={18} /></div>
-          <div>
-            <h3 className="text-xl font-bold text-white">{dadosRelatorio.consumoMedio} <span className="text-xs font-normal text-slate-400">kWh/dia</span></h3>
-            <p className="text-xs text-slate-400 mt-0.5">Consumo Médio <span className="block text-[10px] text-slate-500">média diária do período</span></p>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md space-y-2">
-          <div className="p-2 w-fit rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20"><BarChart3 size={18} /></div>
-          <div>
-            <h3 className="text-xl font-bold text-white">{dadosRelatorio.picoPotencia}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Pico de Potência <span className="block text-[10px] text-slate-500">14:32 &bull; 23/09/2026</span></p>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md space-y-2">
-          <div className="p-2 w-fit rounded-xl bg-emerald-600/10 text-emerald-400 border border-emerald-500/20"><DollarSign size={18} /></div>
-          <div>
-            <h3 className="text-xl font-bold text-white">{dadosRelatorio.custoEstimado}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Custo Estimado <span className="block text-[10px] text-slate-500">@ R$ 0,80/kWh</span></p>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 backdrop-blur-md space-y-2">
-          <div className="p-2 w-fit rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20"><ArrowUpRight size={18} /></div>
-          <div>
-            <h3 className="text-xl font-bold text-rose-400 flex items-center gap-1">
-              {dadosRelatorio.variacao}
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Variação <span className="block text-[10px] text-slate-500">vs. período anterior</span></p>
-          </div>
-        </div>
+        <span className="text-[11px] text-slate-500">{atualizadoEm ? `Atualizado às ${atualizadoEm}` : 'Carregando...'}</span>
       </section>
 
-      {/* Gráfico de Evolução */}
-      <section className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-5 backdrop-blur-md space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-white">Evolução &mdash; {filtroMetrica}</h3>
-            <p className="text-[11px] text-slate-400">Série histórica do período selecionado</p>
+      <section id="relatorio-impressao" className="space-y-6 rounded-2xl print:space-y-4 print:bg-white">
+        <header className="hidden print:block">
+          <h1 className="text-2xl font-bold">Relatório de medições</h1>
+          <p>Período: {filtroPeriodo} | Métrica: {filtroMetrica}</p>
+          <p>Local: {filtroLocal} | Setor: {filtroSetor}</p>
+        </header>
+
+        {erro && <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300 print:text-red-700">{erro}</div>}
+
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4">
+          {[
+            [Zap, formatarNumero(resumo.principal), metrica.acumulada ? 'Total' : 'Média'],
+            [TrendingUp, formatarNumero(resumo.media), 'Média das leituras'],
+            [BarChart3, formatarNumero(resumo.pico), 'Maior valor'],
+            [DollarSign, `R$ ${formatarNumero(resumo.custo, 2)}`, 'Custo estimado'],
+          ].map(([Icone, valor, legenda]) => (
+            <div key={legenda} className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 print:border-gray-300 print:bg-white">
+              <Icone size={18} className="text-blue-400 print:text-black" />
+              <p className="mt-3 text-xl font-bold text-white print:text-black">{valor} <span className="text-xs font-normal text-slate-400 print:text-gray-600">{metrica.unit}</span></p>
+              <p className="mt-1 text-xs text-slate-400 print:text-gray-600">{legenda}</p>
+            </div>
+          ))}
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 print:border-gray-300 print:bg-white">
+          <div className="border-b border-slate-800/60 p-5 print:border-gray-300">
+            <h2 className="text-sm font-bold text-white print:text-black">Medições por dia</h2>
+            <p className="text-[11px] text-slate-400 print:text-gray-600">{registrosValidos.length} leituras encontradas para o período selecionado</p>
           </div>
-
-          <div className="flex items-center gap-1 rounded-xl bg-[#101827] p-1 border border-slate-800 text-xs">
-            {['1h', '6h', '24h', '7d', '30d'].map((p) => (
-              <button 
-                key={p}
-                className={`px-3 py-1 rounded-lg font-medium transition ${p === '7d' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Desenho do Gráfico SVG Estilizado */}
-        <div className="relative pt-6 pb-2">
-          <div className="h-[200px] w-full">
-            <svg viewBox="0 0 700 200" className="w-full h-full overflow-visible">
-              <defs>
-                <linearGradient id="gradRelatorio" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-
-              {/* Linhas de grade de fundo */}
-              {[0, 0.33, 0.66, 1].map((r, i) => (
-                <line key={i} x1="0" y1={200 * r} x2="700" y2={200 * r} stroke="#1e293b" strokeDasharray="4 4" strokeWidth="1" />
-              ))}
-
-              {/* Área sob a curva */}
-              <path d="M 0 50 Q 175 30, 350 70 T 700 90 L 700 200 L 0 200 Z" fill="url(#gradRelatorio)" />
-
-              {/* Linha principal */}
-              <path d="M 0 50 Q 175 30, 350 70 T 700 90" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" />
-
-              {/* Ponto Interativo em Destaque */}
-              <g transform="translate(350, 70)">
-                <circle r="6" fill="#0C141F" stroke="#3b82f6" strokeWidth="3" />
-                <rect x="-45" y="-42" width="90" height="32" rx="8" fill="#101827" stroke="#3b82f6" strokeWidth="1" />
-                <text x="0" y="-28" fill="#94a3b8" fontSize="9" textAnchor="middle">23/09/2026 &bull; Sáb</text>
-                <text x="0" y="-16" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">30,8 kWh</text>
-              </g>
-            </svg>
-          </div>
-
-          <div className="flex justify-between items-center text-[10px] text-slate-500 pt-3 border-t border-slate-800/60">
-            <span>Dom</span>
-            <span>Seg</span>
-            <span>Ter</span>
-            <span>Qua</span>
-            <span>Qui</span>
-            <span>Sex</span>
-            <span>Sáb</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Tabela de Consumo por Período */}
-      <section className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 backdrop-blur-md overflow-hidden">
-        <div className="p-5 border-b border-slate-800/60">
-          <h3 className="text-sm font-bold text-white">Consumo por Período</h3>
-          <p className="text-[11px] text-slate-400">Consolidado diário com custo estimado e variação</p>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[750px] border-collapse text-left text-xs">
-            <thead className="bg-[#101827] text-[10px] uppercase text-slate-400 border-b border-slate-800">
-              <tr>
-                <th className="px-5 py-3 font-semibold">Data</th>
-                <th className="px-4 py-3 font-semibold">Consumo (kWh)</th>
-                <th className="px-4 py-3 font-semibold">Custo Estimado (R$)</th>
-                <th className="px-4 py-3 font-semibold">Variação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {dadosRelatorio.historicoDiario.map((item, idx) => (
-                <tr key={idx} className="transition hover:bg-slate-900/40">
-                  <td className="px-5 py-4 font-medium text-slate-200">{item.data}</td>
-                  <td className="px-4 py-4 text-slate-300 font-semibold">{item.consumo}</td>
-                  <td className="px-4 py-4 text-slate-300">{item.custo}</td>
-                  <td className="px-4 py-4">
-                    <span className={`inline-flex items-center gap-1 font-semibold ${item.tipo === 'alta' ? 'text-rose-400' : 'text-emerald-400'}`}>
-                      {item.tipo === 'alta' ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
-                      {item.variacao}
-                    </span>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-left text-xs">
+              <thead className="border-b border-slate-800 bg-[#101827] text-[10px] uppercase text-slate-400 print:border-gray-300 print:bg-gray-100 print:text-gray-700">
+                <tr>
+                  <th className="px-5 py-3">Data</th><th className="px-4 py-3">Leituras</th><th className="px-4 py-3">Média</th><th className="px-4 py-3">Mínimo</th><th className="px-4 py-3">Máximo</th><th className="px-4 py-3">Variação</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="p-4 border-t border-slate-800/60 text-[11px] text-slate-500">
-          {dadosRelatorio.historicoDiario.length} registros listados
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 print:divide-gray-200">
+                {linhas.map((linha) => (
+                  <tr key={linha.data} className="print:text-black">
+                    <td className="px-5 py-3 font-medium">{linha.data}</td><td className="px-4 py-3">{linha.quantidade}</td><td className="px-4 py-3">{formatarNumero(linha.valor)} {metrica.unit}</td><td className="px-4 py-3">{formatarNumero(linha.minimo)} {metrica.unit}</td><td className="px-4 py-3">{formatarNumero(linha.maximo)} {metrica.unit}</td>
+                    <td className={`px-4 py-3 font-semibold ${linha.variacao >= 0 ? 'text-rose-400 print:text-red-700' : 'text-emerald-400 print:text-green-700'}`}>
+                      {linha.variacao >= 0 ? <ArrowUpRight className="mr-1 inline" size={13} /> : <ArrowDownRight className="mr-1 inline" size={13} />}{formatarNumero(Math.abs(linha.variacao))}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!linhas.length && !carregando && <p className="p-6 text-sm text-slate-400 print:text-gray-600">Nenhuma medição encontrada para os filtros selecionados.</p>}
+        </section>
       </section>
     </main>
   );
