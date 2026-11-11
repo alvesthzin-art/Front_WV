@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Search, 
   X, 
@@ -8,7 +8,7 @@ import {
   MoreVertical 
 } from 'lucide-react';
 
-function AlarmesTabela({ alertas, loading, onReconhecer }) {
+function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
   const [activeTab, setActiveTab] = useState('ativos');
   const [subFiltroHistorico, setSubFiltroHistorico] = useState('Hoje');
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,9 +49,10 @@ function AlarmesTabela({ alertas, loading, onReconhecer }) {
     return isTabMatch && isSearchMatch && isSeveridadeMatch && isCategoriaMatch;
   });
 
-  const handleReconhecerClick = (id, e) => {
+  const handleReconhecerClick = async (id, e) => {
     if (e) e.stopPropagation();
-    onReconhecer(id);
+    const sucesso = await onReconhecer(id);
+    if (!sucesso) return;
     if (selectedAlarme && (selectedAlarme.id_alerta === id || selectedAlarme.id === id)) {
       setSelectedAlarme((prev) => ({ ...prev, status: 'Reconhecido', reconhecido: true }));
     }
@@ -169,7 +170,7 @@ function AlarmesTabela({ alertas, loading, onReconhecer }) {
             ) : alarmesFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-12 text-center text-slate-500">
-                  Nenhum alarme encontrado para os critérios selecionados.
+                  {erro || 'Nenhum alarme encontrado para os critérios selecionados.'}
                 </td>
               </tr>
             ) : (
@@ -212,7 +213,7 @@ function AlarmesTabela({ alertas, loading, onReconhecer }) {
                     {/* Equipamento */}
                     <td className="py-3.5 px-3 text-slate-300 font-medium">
                       {equipamento}
-                      <div className="text-[10px] text-slate-500">{item.local?.split('>')[0] || 'Planta Osasco'}</div>
+                      <div className="text-[10px] text-slate-500">{item.local?.split('>')[0] || 'Local n\u00e3o informado'}</div>
                     </td>
 
                     {/* Severidade */}
@@ -236,8 +237,8 @@ function AlarmesTabela({ alertas, loading, onReconhecer }) {
 
                     {/* Início */}
                     <td className="py-3.5 px-3 text-slate-300">
-                      <div>{item.inicio || 'há 5 min'}</div>
-                      <div className="text-[10px] text-slate-500">{item.data_criacao || item.timestampInicio || 'Hoje'}</div>
+                      <div>{item.inicio || '\u2014'}</div>
+                      <div className="text-[10px] text-slate-500">{item.data_criacao || item.timestampInicio || '\u2014'}</div>
                     </td>
 
                     {/* Status */}
@@ -324,7 +325,7 @@ function AlarmesTabela({ alertas, loading, onReconhecer }) {
 
             <div className="mt-4 rounded-xl border border-[#1B2A40] bg-[#070A15] p-3">
               <div className="font-semibold text-slate-200">{getEquipamento(selectedAlarme)}</div>
-              <div className="text-xs text-slate-400 mt-0.5">📍 {selectedAlarme.local || 'Planta Industrial Osasco'}</div>
+              <div className="text-xs text-slate-400 mt-0.5">📍 {selectedAlarme.local || 'Local n\u00e3o informado'}</div>
             </div>
 
             <div className="mt-4">

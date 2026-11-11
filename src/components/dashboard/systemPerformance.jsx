@@ -54,9 +54,9 @@ export default function SystemPerformance({ dados = [], grandeza = 'Tensão', pe
     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg backdrop-blur-sm">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-lg font-bold text-slate-100">Desempenho do Sistema</h3>
+          <h3 className="text-lg font-bold text-slate-100">{metricAtual.label} ao longo do período selecionado</h3>
           <p className="text-xs text-slate-400">
-            {metricAtual.label} ao longo do período selecionado
+            Desempenho do Sistema
           </p>
         </div>
         <span className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-1.5 text-xs font-semibold text-slate-400">

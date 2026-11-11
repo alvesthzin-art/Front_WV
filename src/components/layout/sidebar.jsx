@@ -17,7 +17,6 @@ const menuItems = [
   { name: 'Medições', icon: Activity, path: '/medicoes' },
   { name: 'Alarmes', icon: BellRing, path: '/alarmes' },
   { name: 'Conectividade', icon: Wifi, path: '/conectividade' },
-  { name: 'Configurações', icon: Settings, path: '/configuracoes' },
   { name: 'Relatórios', icon: FileText, path: '/relatorios' },
 ];
 

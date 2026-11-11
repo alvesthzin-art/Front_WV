@@ -4,41 +4,7 @@ import {
   TriangleAlert,
   Info,
   CircleCheck,
-  ArrowRight,
 } from 'lucide-react';
-
-const alarms = [
-  {
-    title: 'Sobretensão detectada',
-    equipment: 'Compressor HVAC-03',
-    time: 'há 2 min',
-    type: 'critical',
-  },
-  {
-    title: 'Fator de potência baixo',
-    equipment: 'Motor Bomba-07',
-    time: 'há 18 min',
-    type: 'warning',
-  },
-  {
-    title: 'Consumo acima do limite',
-    equipment: 'Linha de Produção B',
-    time: 'há 45 min',
-    type: 'warning',
-  },
-  {
-    title: 'Novo sensor registrado',
-    equipment: 'Painel Elétrico PE-12',
-    time: 'há 1 h',
-    type: 'info',
-  },
-  {
-    title: 'Equipamento restaurado',
-    equipment: 'Torno CNC-02',
-    time: 'há 2 h',
-    type: 'success',
-  },
-];
 
 const styles = {
   critical: {
@@ -59,7 +25,15 @@ const styles = {
   },
 };
 
-function RecentAlarms() {
+function RecentAlarms({ alertas = [], indisponivel = false, onOpenAlarmes }) {
+  const ativos = alertas.filter(item => ['ativo', 'reconhecido'].includes(String(item.status).toLowerCase()));
+  const alarms = ativos.slice(-5).reverse().map((item, index) => ({
+    id: item.id_alerta ?? item.id ?? index,
+    title: item.titulo ?? item.descricao ?? 'Alarme',
+    equipment: item.equipamento?.nome ?? item.equipamento ?? 'Equipamento não informado',
+    time: item.inicio ?? '',
+    type: ['critico', 'crítico'].includes(String(item.severidade).toLowerCase()) ? 'critical' : 'warning',
+  }));
   return (
     <section className="flex min-w-0 flex-col rounded-2xl border border-slate-800 bg-[#0d151f] p-5">
       <div className="flex items-center justify-between gap-3">
@@ -68,17 +42,19 @@ function RecentAlarms() {
         </h2>
 
         <span className="whitespace-nowrap rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-medium text-amber-400">
-          5 ativos
+          {indisponivel ? 'Indisponível' : `${ativos.length} ativos`}
         </span>
       </div>
 
       <div className="mt-5 flex-1 space-y-4">
+        {!alarms.length && <button type="button" onClick={onOpenAlarmes} className="text-left text-xs text-slate-400 hover:text-cyan-400">{indisponivel ? 'Não foi possível carregar os alarmes.' : 'Nenhum alarme ativo.'}</button>}
         {alarms.map((alarm) => {
           const Icon = styles[alarm.type].icon;
 
           return (
             <div
-              key={alarm.title}
+              key={alarm.id}
+              onClick={onOpenAlarmes}
               className="flex min-w-0 items-start gap-3"
             >
               <div
@@ -107,13 +83,7 @@ function RecentAlarms() {
         })}
       </div>
 
-      <button
-        type="button"
-        className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500/20 px-3 py-2.5 text-xs font-medium text-cyan-400 transition hover:bg-cyan-500/30"
-      >
-        Ver todos
-        <ArrowRight size={14} />
-      </button>
+      <button type="button" onClick={onOpenAlarmes} className="mt-5 rounded-xl bg-cyan-500/20 px-3 py-2.5 text-xs font-medium text-cyan-400 hover:bg-cyan-500/30">Ver todos os alarmes</button>
     </section>
   );
 }

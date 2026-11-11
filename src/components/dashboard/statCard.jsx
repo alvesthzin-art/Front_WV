@@ -1,5 +1,4 @@
 
-import React from 'react';
 
 function StatCard({ item }) {
   const { label, value, detail, change, tone, icon: Icon } = item;

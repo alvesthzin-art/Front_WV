@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 // Import dos componentes Gerais
 import { Login } from './pages/login';
@@ -59,7 +59,7 @@ export default function App() {
 
         <main className="flex-1 bg-transparent">
           {pageKey === 'dashboard' ? (
-            <Dashboard />
+            <Dashboard onOpenAlarmes={() => setActivePage('Alarmes')} />
           ) : pageKey === 'medições' || pageKey === 'medicoes' ? (
             <Medicao />
           ) : pageKey === 'operacional' ? (
