@@ -1,15 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  Cpu, 
-  CheckCircle2, 
   AlertTriangle, 
-  XCircle, 
   Search, 
   Plus, 
   Pencil,
-  Layers,
-  MapPin,
-  Zap,
   ArrowLeft,
   Save,
   AlertCircle,
@@ -23,6 +17,7 @@ export default function Operacional() {
   const [pesquisa, setPesquisa] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('Todos');
   const [modalAberto, setModalAberto] = useState(false);
+  const [itemEmEdicao, setItemEmEdicao] = useState(null);
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState(null);
 
   const [equipamentos, setEquipamentos] = useState([]);
@@ -73,14 +68,23 @@ export default function Operacional() {
   };
 
   useEffect(() => {
-    carregarDadosOperacionais();
+    const agendamento = setTimeout(() => { void carregarDadosOperacionais(); }, 0);
     const intervalo = setInterval(carregarDadosOperacionais, 5000);
-    return () => clearInterval(intervalo);
+    return () => { clearTimeout(agendamento); clearInterval(intervalo); };
   }, []);
 
   const handleSelecionarEquipamento = (item) => {
     setEquipamentoSelecionado(item);
     setFormEdicao(item);
+  };
+
+  const handleSelecionarItemOperacional = (item) => {
+    if (abaAtiva === 'Equipamentos') {
+      handleSelecionarEquipamento(item);
+      return;
+    }
+    setItemEmEdicao(item);
+    setModalAberto(true);
   };
 
   const handleInputChange = (campo, valor) => {
@@ -116,23 +120,29 @@ export default function Operacional() {
         const payload = {
           nome: novoItem.nome,
           codigo: novoItem.codigo || `SET-${Math.floor(Math.random() * 900 + 100)}`,
-          id_local: novoItem.id_local ? Number(novoItem.id_local) : 1,
+          id_local: novoItem.id_local ? Number(novoItem.id_local) : Number(locais[0]?.id),
+          responsavel: novoItem.responsavel || null,
+          descricao: novoItem.descricao || null,
           status: novoItem.status || 'Ativo'
         };
-        await api.post('/setores', payload);
+        if (itemEmEdicao) await api.put(`/setores/${itemEmEdicao.id}`, payload);
+        else await api.post('/setores', payload);
       } else {
         const payload = {
           nome: novoItem.nome,
           codigo: novoItem.codigo || `LOC-${Math.floor(Math.random() * 900 + 100)}`,
           endereco: novoItem.endereco || novoItem.localizacao || 'Planta Principal',
+          responsavel: novoItem.responsavel || null,
           status: novoItem.status || 'Ativo',
-          id_empresa: novoItem.id_empresa ? Number(novoItem.id_empresa) : 1
+          id_empresa: novoItem.id_empresa ? Number(novoItem.id_empresa) : Number(itemEmEdicao?.id_empresa || 1)
         };
-        await api.post('/locais', payload);
+        if (itemEmEdicao) await api.put(`/locais/${itemEmEdicao.id}`, payload);
+        else await api.post('/locais', payload);
       }
       
-      alert('Item cadastrado com sucesso no banco!');
+      alert(`${itemEmEdicao ? 'Alterações salvas' : 'Item cadastrado'} com sucesso no banco!`);
       setModalAberto(false);
+      setItemEmEdicao(null);
       carregarDadosOperacionais();
     } catch (error) {
       console.error("Erro ao cadastrar no banco:", error);
@@ -142,10 +152,9 @@ export default function Operacional() {
 
   // Filtros de Pesquisa e Status
   const itensFiltrados = () => {
-    let dadosAtuais = [];
-    if (abaAtiva === 'Equipamentos') dadosAtuais = equipamentos;
-    else if (abaAtiva === 'Setores') dadosAtuais = setores;
-    else dadosAtuais = locais;
+    const dadosAtuais = abaAtiva === 'Equipamentos'
+      ? equipamentos
+      : abaAtiva === 'Setores' ? setores : locais;
 
     return dadosAtuais.filter(item => {
       const matchNome = item.nome?.toLowerCase().includes(pesquisa.toLowerCase()) || 
@@ -394,7 +403,7 @@ export default function Operacional() {
         {['Equipamentos', 'Setores', 'Locais'].map((aba) => (
           <button
             key={aba}
-            onClick={() => { setAbaAtiva(aba); setPesquisa(''); setFiltroStatus('Todos'); }}
+            onClick={() => { setAbaAtiva(aba); setPesquisa(''); setFiltroStatus('Todos'); setItemEmEdicao(null); }}
             className={`pb-3 text-sm font-semibold transition-colors relative ${
               abaAtiva === aba 
                 ? 'text-blue-400 border-b-2 border-blue-500' 
@@ -433,7 +442,7 @@ export default function Operacional() {
 
         <button
           type="button"
-          onClick={() => setModalAberto(true)}
+          onClick={() => { setItemEmEdicao(null); setModalAberto(true); }}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-500 shadow-lg shadow-blue-600/20"
         >
           <Plus size={15} />
@@ -467,10 +476,8 @@ export default function Operacional() {
                 itensFiltrados().map((item) => (
                   <tr 
                     key={item.id} 
-                    onClick={() => {
-                      if (abaAtiva === 'Equipamentos') handleSelecionarEquipamento(item);
-                    }}
-                    className={`transition hover:bg-slate-900/40 ${abaAtiva === 'Equipamentos' ? 'cursor-pointer' : ''}`}
+                    onClick={() => handleSelecionarItemOperacional(item)}
+                    className="cursor-pointer transition hover:bg-slate-900/40"
                   >
                     <td className="px-5 py-4">
                       <p className="font-semibold text-slate-200 hover:text-blue-400 transition">{item.nome}</p>
@@ -495,7 +502,7 @@ export default function Operacional() {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (abaAtiva === 'Equipamentos') handleSelecionarEquipamento(item);
+                            handleSelecionarItemOperacional(item);
                           }}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
                           title="Editar"
@@ -514,8 +521,11 @@ export default function Operacional() {
 
       {modalAberto && (
         <NovoOperacionalModal 
+          key={`${abaAtiva}-${itemEmEdicao?.id || 'novo'}`}
           tipo={abaAtiva} 
-          onClose={() => setModalAberto(false)} 
+          itemInicial={itemEmEdicao}
+          locais={locais}
+          onClose={() => { setModalAberto(false); setItemEmEdicao(null); }}
           onSalvar={handleSalvarNovo} 
         />
       )}

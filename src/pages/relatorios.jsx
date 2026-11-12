@@ -79,10 +79,28 @@ function abreviarData(valor) {
   return data ? data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
 }
 
+function rotuloDataHora(valor) {
+  const data = converterData(valor);
+  return data ? data.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+}
+
 function amostrarRegistros(registros, limite = 120) {
   if (registros.length <= limite) return registros;
   const passo = (registros.length - 1) / (limite - 1);
   return Array.from({ length: limite }, (_, indice) => registros[Math.round(indice * passo)]);
+}
+
+function chaveDataLocal(data) {
+  return [data.getFullYear(), String(data.getMonth() + 1).padStart(2, '0'), String(data.getDate()).padStart(2, '0')].join('-');
+}
+
+function formatarDataLocal(data) {
+  return data.toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
 function agruparPorDia(registros, metrica) {
@@ -93,7 +111,7 @@ function agruparPorDia(registros, metrica) {
     const valor = obterValor(item, metrica);
     if (!data || valor === null) return;
 
-    const chave = data.toISOString().slice(0, 10);
+    const chave = chaveDataLocal(data);
     const grupo = grupos.get(chave) || { data, valores: [] };
     grupo.valores.push(valor);
     grupos.set(chave, grupo);
@@ -120,6 +138,40 @@ function agruparPorDia(registros, metrica) {
         variacao,
       };
     });
+}
+
+function agruparTodasGrandezasPorDia(registros) {
+  const grupos = new Map();
+
+  registros.forEach((item) => {
+    const data = converterData(item.data_hora);
+    if (!data) return;
+
+    const chave = chaveDataLocal(data);
+    const grupo = grupos.get(chave) || { data, valores: new Map(), leituras: 0 };
+    grupo.leituras += 1;
+    METRICAS_GRAFICO.forEach((itemMetrica) => {
+      const valor = obterValor(item, itemMetrica);
+      if (valor === null) return;
+      const valores = grupo.valores.get(itemMetrica.nome) || [];
+      valores.push(valor);
+      grupo.valores.set(itemMetrica.nome, valores);
+    });
+    grupos.set(chave, grupo);
+  });
+
+  return [...grupos.values()].sort((a, b) => a.data - b.data).map((grupo) => ({
+    data: formatarDataLocal(grupo.data),
+    leituras: grupo.leituras,
+    metricas: METRICAS_GRAFICO.map((itemMetrica) => {
+      const valores = grupo.valores.get(itemMetrica.nome) || [];
+      if (!valores.length) return { nome: itemMetrica.nome, valor: null };
+      const valor = itemMetrica.acumulada
+        ? Math.max(...valores) - Math.min(...valores)
+        : valores.reduce((soma, atual) => soma + atual, 0) / valores.length;
+      return { nome: itemMetrica.nome, valor };
+    }),
+  }));
 }
 
 export default function Relatorios() {
@@ -205,7 +257,7 @@ export default function Relatorios() {
   );
 
   const dadosGrafico = useMemo(() => amostrarRegistros(registrosValidos).map((item) => {
-    const ponto = { momento: abreviarData(item.data_hora) };
+    const ponto = { momento: abreviarData(item.data_hora), dataLabel: rotuloDataHora(item.data_hora) };
     ponto.__originais = {};
     METRICAS_GRAFICO.forEach((itemMetrica) => {
       const valor = obterValor(item, itemMetrica);
@@ -235,6 +287,7 @@ export default function Relatorios() {
 
   const dadosGraficoReal = useMemo(() => dadosGrafico.map((item) => ({
     momento: item.momento,
+    dataLabel: item.dataLabel,
     ...item.__originais,
   })), [dadosGrafico]);
 
@@ -269,6 +322,11 @@ export default function Relatorios() {
       ultimo: valores.at(-1) ?? 0,
     };
   }), [registrosValidos]);
+
+  const resumoDiario = useMemo(
+    () => agruparTodasGrandezasPorDia(registrosValidos),
+    [registrosValidos]
+  );
 
   const imprimirRelatorio = () => window.print();
 
@@ -319,6 +377,16 @@ export default function Relatorios() {
       desenhou = true;
     });
     contexto.stroke();
+
+    contexto.fillStyle = '#64748b';
+    contexto.font = '12px Arial';
+    [0, Math.floor((dadosGraficoReal.length - 1) / 2), dadosGraficoReal.length - 1]
+      .filter((indice, posicao, lista) => indice >= 0 && lista.indexOf(indice) === posicao)
+      .forEach((indice) => {
+        const x = margem.esquerda + (largura * indice) / Math.max(dadosGraficoReal.length - 1, 1);
+        const rotulo = dadosGraficoReal[indice]?.dataLabel || '';
+        contexto.fillText(rotulo, Math.max(margem.esquerda, x - 36), canvas.height - 14);
+      });
 
     return canvas.toDataURL('image/png', 1);
   };
@@ -371,14 +439,16 @@ export default function Relatorios() {
     });
 
     const linhasTabela = exibirTodas
-      ? metricasExibidas.flatMap((itemMetrica) => agruparPorDia(registrosValidos, itemMetrica).map((linha) => [
-        itemMetrica.nome,
-        linha.data,
-        linha.quantidade,
-        `${formatarNumero(linha.valor, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`,
-        `${formatarNumero(linha.minimo, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`,
-        `${formatarNumero(linha.maximo, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`,
-      ]))
+      ? resumoDiario.map((dia) => [
+        dia.data,
+        dia.leituras,
+        ...dia.metricas.map((itemResumo) => {
+          const itemMetrica = METRICAS_GRAFICO.find(item => item.nome === itemResumo.nome);
+          return itemResumo.valor === null
+            ? '—'
+            : `${formatarNumero(itemResumo.valor, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`;
+        }),
+      ])
       : linhas.map((linha) => [
         linha.data,
         linha.quantidade,
@@ -388,14 +458,20 @@ export default function Relatorios() {
         `${linha.variacao >= 0 ? '+' : ''}${formatarNumero(linha.variacao)}%`,
       ]);
 
+    const inicioTabela = proximaPosicaoGrafico + 4;
+    documento.setFontSize(11);
+    documento.setTextColor(15, 23, 42);
+    documento.text(exibirTodas ? 'Resumo diário de todas as grandezas' : `Resumo diário de ${filtroMetrica}`, 14, inicioTabela);
+
     autoTable(documento, {
-      startY: proximaPosicaoGrafico + 4,
+      startY: inicioTabela + 4,
       head: [exibirTodas
-        ? ['Grandeza', 'Data', 'Leituras', 'Média', 'Mínimo', 'Máximo']
+        ? ['Data', 'Leituras', 'Consumo', 'Potência média', 'Tensão média', 'Corrente média', 'Frequência média', 'FP médio']
         : ['Data', 'Leituras', 'Média', 'Mínimo', 'Máximo', 'Variação']],
       body: linhasTabela,
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42] },
+      styles: { fontSize: exibirTodas ? 7 : 8, cellPadding: 2 },
     });
 
     documento.save(nomeArquivo);
@@ -518,11 +594,30 @@ export default function Relatorios() {
             <table className="w-full min-w-[720px] border-collapse text-left text-xs">
               <thead className="border-b border-slate-800 bg-[#101827] text-[10px] uppercase text-slate-400 print:border-gray-300 print:bg-gray-100 print:text-gray-700">
                 <tr>
-                  <th className="px-5 py-3">Data</th><th className="px-4 py-3">Leituras</th><th className="px-4 py-3">Média</th><th className="px-4 py-3">Mínimo</th><th className="px-4 py-3">Máximo</th><th className="px-4 py-3">Variação</th>
+                  {exibirTodas ? (
+                    <>
+                      <th className="px-5 py-3">Data</th>
+                      <th className="px-4 py-3">Leituras</th>
+                      {METRICAS_GRAFICO.map((itemMetrica) => <th key={itemMetrica.nome} className="px-4 py-3" style={{ color: itemMetrica.cor }}>{itemMetrica.nome}</th>)}
+                    </>
+                  ) : (
+                    <>
+                      <th className="px-5 py-3">Data</th><th className="px-4 py-3">Leituras</th><th className="px-4 py-3">Média</th><th className="px-4 py-3">Mínimo</th><th className="px-4 py-3">Máximo</th><th className="px-4 py-3">Variação</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 print:divide-gray-200">
-                {linhas.map((linha) => (
+                {exibirTodas ? resumoDiario.map((dia) => (
+                  <tr key={dia.data} className="print:text-black">
+                    <td className="px-5 py-3 font-medium">{dia.data}</td>
+                    <td className="px-4 py-3">{dia.leituras}</td>
+                    {dia.metricas.map((itemResumo) => {
+                      const itemMetrica = METRICAS_GRAFICO.find(item => item.nome === itemResumo.nome);
+                      return <td key={itemResumo.nome} className="px-4 py-3" style={{ color: itemMetrica.cor }}>{itemResumo.valor === null ? '—' : `${formatarNumero(itemResumo.valor, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`}</td>;
+                    })}
+                  </tr>
+                )) : linhas.map((linha) => (
                   <tr key={linha.data} className="print:text-black">
                     <td className="px-5 py-3 font-medium">{linha.data}</td><td className="px-4 py-3">{linha.quantidade}</td><td className="px-4 py-3">{formatarNumero(linha.valor)} {metrica.unit}</td><td className="px-4 py-3">{formatarNumero(linha.minimo)} {metrica.unit}</td><td className="px-4 py-3">{formatarNumero(linha.maximo)} {metrica.unit}</td>
                     <td className={`px-4 py-3 font-semibold ${linha.variacao >= 0 ? 'text-rose-400 print:text-red-700' : 'text-emerald-400 print:text-green-700'}`}>

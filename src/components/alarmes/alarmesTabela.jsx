@@ -9,12 +9,14 @@ import {
 } from 'lucide-react';
 
 function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
+  const LIMITE_POR_PAGINA = 10;
   const [activeTab, setActiveTab] = useState('ativos');
   const [subFiltroHistorico, setSubFiltroHistorico] = useState('Hoje');
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroSeveridade, setFiltroSeveridade] = useState('Todos');
   const [filtroCategoria, setFiltroCategoria] = useState('Todos');
   const [selectedAlarme, setSelectedAlarme] = useState(null);
+  const [paginaAtual, setPaginaAtual] = useState(1);
 
   // Tratamento dinâmico de propriedades (suporta dados do backend e fallbacks)
   const getTitulo = (item) => item.titulo || item.mensagem || 'Alerta do Sistema';
@@ -49,6 +51,13 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
     return isTabMatch && isSearchMatch && isSeveridadeMatch && isCategoriaMatch;
   });
 
+  const totalPaginas = Math.max(1, Math.ceil(alarmesFiltrados.length / LIMITE_POR_PAGINA));
+  const paginaVisivel = Math.min(paginaAtual, totalPaginas);
+  const alarmesDaPagina = alarmesFiltrados.slice(
+    (paginaVisivel - 1) * LIMITE_POR_PAGINA,
+    paginaVisivel * LIMITE_POR_PAGINA
+  );
+
   const handleReconhecerClick = async (id, e) => {
     if (e) e.stopPropagation();
     const sucesso = await onReconhecer(id);
@@ -64,7 +73,7 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-[#1B2A40] pb-4">
         <div className="flex items-center gap-6">
           <button
-            onClick={() => setActiveTab('ativos')}
+            onClick={() => { setActiveTab('ativos'); setPaginaAtual(1); }}
             className={`relative pb-2 text-sm font-semibold transition-colors ${
               activeTab === 'ativos' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
             }`}
@@ -75,7 +84,7 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
             )}
           </button>
           <button
-            onClick={() => setActiveTab('historico')}
+            onClick={() => { setActiveTab('historico'); setPaginaAtual(1); }}
             className={`relative pb-2 text-sm font-semibold transition-colors ${
               activeTab === 'historico' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
             }`}
@@ -95,14 +104,14 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
               type="text"
               placeholder="Buscar alarme ou equipamento..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setPaginaAtual(1); }}
               className="h-9 w-60 rounded-xl border border-[#1B2A40] bg-[#070A15] pl-9 pr-3 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-[#356EC5]"
             />
           </div>
 
           <select
             value={filtroSeveridade}
-            onChange={(e) => setFiltroSeveridade(e.target.value)}
+            onChange={(e) => { setFiltroSeveridade(e.target.value); setPaginaAtual(1); }}
             className="h-9 rounded-xl border border-[#1B2A40] bg-[#070A15] px-3 text-xs text-slate-300 outline-none focus:border-[#356EC5]"
           >
             <option value="Todos">Severidade: Todos</option>
@@ -113,7 +122,7 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
 
           <select
             value={filtroCategoria}
-            onChange={(e) => setFiltroCategoria(e.target.value)}
+            onChange={(e) => { setFiltroCategoria(e.target.value); setPaginaAtual(1); }}
             className="h-9 rounded-xl border border-[#1B2A40] bg-[#070A15] px-3 text-xs text-slate-300 outline-none focus:border-[#356EC5]"
           >
             <option value="Todos">Categoria: Todos</option>
@@ -129,7 +138,7 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
           {['Hoje', '7 dias', '30 dias', 'Personalizado'].map((sub) => (
             <button
               key={sub}
-              onClick={() => setSubFiltroHistorico(sub)}
+              onClick={() => { setSubFiltroHistorico(sub); setPaginaAtual(1); }}
               className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
                 subFiltroHistorico === sub
                   ? 'bg-[#17315F] text-[#78B5FF] border border-[#244C88]/50'
@@ -174,7 +183,7 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
                 </td>
               </tr>
             ) : (
-              alarmesFiltrados.map((item) => {
+              alarmesDaPagina.map((item) => {
                 const idAlarme = item.id_alerta || item.id;
                 const titulo = getTitulo(item);
                 const condicao = getCondicao(item);
@@ -287,13 +296,15 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
 
       {/* Paginação */}
       <div className="mt-4 flex items-center justify-between border-t border-[#1B2A40] pt-4 text-xs text-slate-400">
-        <span>Mostrando 1 a {alarmesFiltrados.length} de {alarmesFiltrados.length} alarmes</span>
+        <span>
+          {alarmesFiltrados.length ? `Mostrando ${(paginaVisivel - 1) * LIMITE_POR_PAGINA + 1} a ${Math.min(paginaVisivel * LIMITE_POR_PAGINA, alarmesFiltrados.length)} de ${alarmesFiltrados.length} alarmes` : 'Nenhum alarme'}
+        </span>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1 rounded-lg border border-[#1B2A40] bg-[#070A15] px-2.5 py-1 hover:border-slate-600 disabled:opacity-50" disabled>
+          <button onClick={() => setPaginaAtual((pagina) => Math.max(1, pagina - 1))} className="flex items-center gap-1 rounded-lg border border-[#1B2A40] bg-[#070A15] px-2.5 py-1 hover:border-slate-600 disabled:opacity-50" disabled={paginaVisivel === 1}>
             <ChevronLeft className="h-3.5 w-3.5" /> Anterior
           </button>
-          <span className="px-2 font-medium text-slate-200">1 / 1</span>
-          <button className="flex items-center gap-1 rounded-lg border border-[#1B2A40] bg-[#070A15] px-2.5 py-1 hover:border-slate-600 disabled:opacity-50" disabled>
+          <span className="px-2 font-medium text-slate-200">{paginaVisivel} / {totalPaginas}</span>
+          <button onClick={() => setPaginaAtual((pagina) => Math.min(totalPaginas, pagina + 1))} className="flex items-center gap-1 rounded-lg border border-[#1B2A40] bg-[#070A15] px-2.5 py-1 hover:border-slate-600 disabled:opacity-50" disabled={paginaVisivel === totalPaginas}>
             Próxima <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
