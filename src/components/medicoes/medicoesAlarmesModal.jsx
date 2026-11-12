@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import api from '../../services/api';
 import NovoLimiteModal from './novoLimiteModal';
 import {
   X,
@@ -8,74 +9,6 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-
-const dadosIniciais = [
-  {
-    id: 1,
-    entidade: 'Compressor HVAC-03',
-    tipo: 'EQUIP.',
-    grandeza: 'Potência',
-    condicao: '',
-    severidade: 'Crítico',
-    periodo: 'Contínuo',
-    status: 'Ativa',
-  },
-  {
-    id: 2,
-    entidade: 'Motor Bomba-07',
-    tipo: 'EQUIP.',
-    grandeza: 'Corrente',
-    condicao: '',
-    severidade: 'Crítico',
-    periodo: 'Contínuo',
-    status: 'Ativa',
-  },
-  {
-    id: 3,
-    entidade: 'Produção',
-    tipo: 'SETOR',
-    grandeza: 'Energia',
-    condicao: '> 1.124 kWh',
-    severidade: 'Meta',
-    periodo: '01/09 a 30/09/2026',
-    status: 'Ativa',
-  },
-  {
-    id: 4,
-    entidade: 'Planta Industrial Jandira',
-    tipo: 'LOCAL',
-    grandeza: 'Energia',
-    condicao: '> 1.300 kWh',
-    severidade: 'Meta',
-    periodo: 'Contínuo',
-    status: 'Ativa',
-  },
-  {
-    id: 5,
-    entidade: 'Prensa Hidráulica PH-01',
-    tipo: 'EQUIP.',
-    grandeza: 'Tensão',
-    condicao: '< 200 V',
-    severidade: 'Crítico',
-    periodo: 'Contínuo',
-    status: 'Inativa',
-  },
-  {
-    id: 6,
-    entidade: 'Chiller CH-01',
-    tipo: 'EQUIP.',
-    grandeza: 'Energia',
-    condicao: '> 800 kWh',
-    severidade: 'Atenção',
-    periodo: '01/09 a 30/09/2026',
-    status: 'Ativa',
-  },
-];
-
-const nomesEntidades = {
-  'sensor-01': 'Sensor Principal - Ar Condicionado',
-  'sensor-02': 'Sensor Secundário - Iluminação',
-};
 
 const unidadesGrandeza = {
   Potência: 'kW',
@@ -97,15 +30,79 @@ function obterTipo(escopo) {
   return 'LOCAL';
 }
 
+const grandezaApi = { Potência: 'potencia', Tensão: 'tensao', Corrente: 'corrente', Energia: 'energia' };
+const grandezaTela = { potencia: 'Potência', tensao: 'Tensão', corrente: 'Corrente', energia: 'Energia' };
+const severidadeApi = { 'Atenção': 'atencao', Crítico: 'critico', Meta: 'meta', Informativo: 'informativo' };
+const severidadeTela = { atencao: 'Atenção', critico: 'Crítico', meta: 'Meta', informativo: 'Informativo' };
+
+function extrairDados(resposta) {
+  return Array.isArray(resposta?.data?.dados) ? resposta.data.dados : [];
+}
+
+function nomeEntidade(item, equipamentos, setores, locais) {
+  if (item.id_equipamento) return equipamentos.find((itemAtual) => itemAtual.id === item.id_equipamento)?.nome || `Equipamento ${item.id_equipamento}`;
+  if (item.id_setor) return setores.find((itemAtual) => itemAtual.id === item.id_setor)?.nome || `Setor ${item.id_setor}`;
+  return locais.find((itemAtual) => itemAtual.id === item.id_local)?.nome || `Local ${item.id_local}`;
+}
+
+function converterLimite(item, equipamentos, setores, locais) {
+  const grandeza = grandezaTela[item.grandeza] || item.grandeza;
+  const unidade = unidadesGrandeza[grandeza] || '';
+  const escopo = item.id_equipamento ? 'Equipamento' : item.id_setor ? 'Setor' : 'Local';
+  const entidadeId = item.id_equipamento || item.id_setor || item.id_local;
+  const periodo = item.periodo_inicial && item.periodo_final
+    ? `${formatarData(String(item.periodo_inicial).slice(0, 10))} a ${formatarData(String(item.periodo_final).slice(0, 10))}`
+    : item.periodo_inicial ? `A partir de ${formatarData(String(item.periodo_inicial).slice(0, 10))}`
+      : item.periodo_final ? `Até ${formatarData(String(item.periodo_final).slice(0, 10))}` : 'Contínuo';
+  return {
+    ...item,
+    id: item.id,
+    escopo,
+    entidadeId,
+    entidade: nomeEntidade(item, equipamentos, setores, locais),
+    tipo: obterTipo(escopo),
+    grandeza,
+    condicao: `${item.operador} ${item.valor} ${unidade}`,
+    severidade: severidadeTela[item.severidade] || item.severidade,
+    periodo,
+    status: Number(item.ativa) === 1 ? 'Ativa' : 'Inativa',
+  };
+}
+
 export default function MedicoesAlarmesModal({ onClose }) {
   const [pesquisa, setPesquisa] = useState('');
   const [grandeza, setGrandeza] = useState('Todos');
   const [severidade, setSeveridade] = useState('Todos');
   const [status, setStatus] = useState('Todos');
 
-  const [medicoes, setMedicoes] = useState(dadosIniciais);
+  const [medicoes, setMedicoes] = useState([]);
+  const [equipamentos, setEquipamentos] = useState([]);
+  const [setores, setSetores] = useState([]);
+  const [locais, setLocais] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
   const [novoLimiteAberto, setNovoLimiteAberto] = useState(false);
   const [itemParaEditar, setItemParaEditar] = useState(null);
+
+  async function carregarDados() {
+    setCarregando(true);
+    setErro('');
+    try {
+      const [limitesResposta, equipamentosResposta, setoresResposta, locaisResposta] = await Promise.all([
+        api.get('/limites'), api.get('/equipamentos'), api.get('/setores'), api.get('/locais'),
+      ]);
+      const equipamentosAtuais = extrairDados(equipamentosResposta);
+      const setoresAtuais = extrairDados(setoresResposta);
+      const locaisAtuais = extrairDados(locaisResposta);
+      setEquipamentos(equipamentosAtuais); setSetores(setoresAtuais); setLocais(locaisAtuais);
+      setMedicoes(extrairDados(limitesResposta).map((item) => converterLimite(item, equipamentosAtuais, setoresAtuais, locaisAtuais)));
+    } catch (error) {
+      setErro(error.response?.data?.mensagem || 'Não foi possível carregar as metas do banco de dados.');
+    } finally { setCarregando(false); }
+  }
+
+  useEffect(() => { const timer = setTimeout(() => { void carregarDados(); }, 0); return () => clearTimeout(timer); }, []);
 
   const listaFiltrada = useMemo(() => {
     return medicoes.filter((item) => {
@@ -131,27 +128,16 @@ export default function MedicoesAlarmesModal({ onClose }) {
     });
   }, [medicoes, pesquisa, grandeza, severidade, status]);
 
-  function alternarStatus(id) {
-    setMedicoes((atuais) =>
-      atuais.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status: item.status === 'Ativa' ? 'Inativa' : 'Ativa',
-            }
-          : item
-      )
-    );
+  async function alternarStatus(item) {
+    try {
+      await api.patch(`/limites/${item.id}/status`, { ativa: item.status !== 'Ativa' });
+      await carregarDados();
+    } catch (error) { setErro(error.response?.data?.mensagem || 'Não foi possível alterar o status da meta.'); }
   }
 
-  function deletarMedicao(id) {
-    setMedicoes((atuais) =>
-      atuais.filter((item) => item.id !== id)
-    );
-
-    if (itemParaEditar?.id === id) {
-      fecharModalLimite();
-    }
+  async function desativarMedicao(item) {
+    if (item.status === 'Inativa') return;
+    await alternarStatus(item);
   }
 
   function abrirNovoLimite() {
@@ -169,66 +155,22 @@ export default function MedicoesAlarmesModal({ onClose }) {
     setItemParaEditar(null);
   }
 
-  function salvarLimite(dados) {
-    const nomeEntidade =
-      nomesEntidades[dados.entidade] ||
-      dados.entidade ||
-      'Nova entidade';
-
-    const unidade = unidadesGrandeza[dados.grandeza] || '';
-
-    const periodo =
-      dados.periodoInicial && dados.periodoFinal
-        ? `${formatarData(dados.periodoInicial)} a ${formatarData(
-            dados.periodoFinal
-          )}`
-        : dados.periodoInicial
-          ? `A partir de ${formatarData(dados.periodoInicial)}`
-          : dados.periodoFinal
-            ? `Até ${formatarData(dados.periodoFinal)}`
-            : 'Contínuo';
-
-    const condicaoFormatada = dados.valor
-      ? `${dados.operador || '>'} ${dados.valor} ${unidade}`.trim()
-      : '';
-
-    const novoRegistro = {
-      entidade: nomeEntidade,
-      tipo: obterTipo(dados.escopo),
-      grandeza: dados.grandeza,
-      condicao: condicaoFormatada,
-      severidade: dados.severidade,
-      periodo,
+  async function salvarLimite(dados) {
+    const entidadeId = Number(dados.entidade);
+    const payload = {
+      descricao: dados.descricao.trim(), grandeza: grandezaApi[dados.grandeza], operador: dados.operador,
+      valor: dados.valor, severidade: severidadeApi[dados.severidade], periodo_inicial: dados.periodoInicial || null,
+      periodo_final: dados.periodoFinal || null, ativa: dados.limiteAtivo ? 1 : 0,
+      id_equipamento: dados.escopo === 'Equipamento' ? entidadeId : null,
+      id_setor: dados.escopo === 'Setor' ? entidadeId : null, id_local: dados.escopo === 'Local' ? entidadeId : null,
     };
-
-    if (itemParaEditar) {
-      setMedicoes((atuais) =>
-        atuais.map((item) =>
-          item.id === itemParaEditar.id
-            ? {
-                ...item,
-                ...novoRegistro,
-                status:
-                  dados.limiteAtivo === undefined
-                    ? item.status
-                    : dados.limiteAtivo
-                      ? 'Ativa'
-                      : 'Inativa',
-              }
-            : item
-        )
-      );
-    } else {
-      const novaMedicao = {
-        id: Date.now(),
-        ...novoRegistro,
-        status: dados.limiteAtivo ? 'Ativa' : 'Inativa',
-      };
-
-      setMedicoes((atuais) => [...atuais, novaMedicao]);
-    }
-
-    fecharModalLimite();
+    setSalvando(true); setErro('');
+    try {
+      if (itemParaEditar) await api.put(`/limites/${itemParaEditar.id}`, payload);
+      else await api.post('/limites', payload);
+      fecharModalLimite(); await carregarDados();
+    } catch (error) { setErro(error.response?.data?.mensagem || 'Não foi possível salvar a meta.'); }
+    finally { setSalvando(false); }
   }
 
   const estiloSelect =
@@ -339,6 +281,8 @@ export default function MedicoesAlarmesModal({ onClose }) {
           </button>
         </div>
 
+        {erro && <div className="mx-4 mt-4 rounded-xl border border-red-900/60 bg-red-950/30 px-3 py-2 text-xs text-red-300">{erro}</div>}
+
         {/* Tabela */}
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full min-w-[850px] border-collapse text-left text-xs">
@@ -355,7 +299,9 @@ export default function MedicoesAlarmesModal({ onClose }) {
             </thead>
 
             <tbody>
-              {listaFiltrada.map((item) => (
+              {carregando ? (
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-[#7E8A9D]">Carregando metas...</td></tr>
+              ) : listaFiltrada.map((item) => (
                 <tr
                   key={item.id}
                   className="border-t border-[#172337] transition hover:bg-[#121E30]"
@@ -401,7 +347,7 @@ export default function MedicoesAlarmesModal({ onClose }) {
                   <td className="px-3 py-4">
                     <button
                       type="button"
-                      onClick={() => alternarStatus(item.id)}
+                      onClick={() => alternarStatus(item)}
                       title="Alternar status"
                       className={`rounded-full border px-2 py-1 text-[10px] ${
                         item.status === 'Ativa'
@@ -426,8 +372,8 @@ export default function MedicoesAlarmesModal({ onClose }) {
 
                       <button
                         type="button"
-                        title={`Excluir ${item.entidade}`}
-                        onClick={() => deletarMedicao(item.id)}
+                        title={`Desativar ${item.entidade}`}
+                        onClick={() => desativarMedicao(item)}
                         className="p-1 text-[#C5A059] transition hover:text-[#E2C37B]"
                       >
                         <Trash2 size={15} />
@@ -437,7 +383,7 @@ export default function MedicoesAlarmesModal({ onClose }) {
                 </tr>
               ))}
 
-              {listaFiltrada.length === 0 && (
+              {!carregando && listaFiltrada.length === 0 && (
                 <tr>
                   <td
                     colSpan={7}
@@ -460,7 +406,12 @@ export default function MedicoesAlarmesModal({ onClose }) {
       {/* Modal Criar / Editar Limite */}
       {novoLimiteAberto && (
         <NovoLimiteModal
+          key={itemParaEditar?.id ?? 'novo'}
           itemEdicao={itemParaEditar}
+          equipamentos={equipamentos}
+          setores={setores}
+          locais={locais}
+          salvando={salvando}
           onFechar={fecharModalLimite}
           onSalvar={salvarLimite}
         />
