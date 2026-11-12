@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Eye, EyeOff, Lock, ShieldCheck, Activity, Wifi, ArrowRight } from 'lucide-react';
 import loginBg from '../assets/login.png';
 import logoWV from '../assets/logoWV.png';
@@ -11,10 +11,8 @@ export function Login({ onLoginSuccess }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Simulação de login 
-    if (onLoginSuccess) {
-      onLoginSuccess();
-    }
+    // Acesso demonstrativo enquanto o cadastro de usuários não está disponível.
+    onLoginSuccess?.();
   };
 
   return (

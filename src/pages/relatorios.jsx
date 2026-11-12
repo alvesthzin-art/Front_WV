@@ -12,6 +12,15 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import api from '../services/api';
 
 const HORAS_POR_PERIODO = {
@@ -25,11 +34,18 @@ const HORAS_POR_PERIODO = {
 const CUSTO_KWH = 0.8;
 
 const METRICAS = {
-  'Consumo (kWh)': { keys: ['energia', 'energia_acumulada', 'consumo'], unit: 'kWh', acumulada: true },
-  'Potência (kW)': { keys: ['potencia_ativa', 'potencia'], unit: 'kW' },
-  'Tensão (V)': { keys: ['tensao'], unit: 'V' },
-  'Corrente (A)': { keys: ['corrente'], unit: 'A' },
+  'Consumo (kWh)': { keys: ['energia', 'energia_acumulada', 'consumo'], unit: 'kWh', acumulada: true, cor: '#3b82f6' },
+  'Potência (kW)': { keys: ['potencia_ativa', 'potencia'], unit: 'kW', transform: valor => valor / 1000, cor: '#10b981' },
+  'Tensão (V)': { keys: ['tensao'], unit: 'V', cor: '#6366f1' },
+  'Corrente (A)': { keys: ['corrente'], unit: 'A', cor: '#f59e0b' },
+  'Frequência (Hz)': { keys: ['frequencia', 'frequência'], unit: 'Hz', cor: '#a855f7' },
+  'Fator de potência': { keys: ['fator_potencia', 'fatorPotencia'], unit: '', casas: 3, cor: '#f97316' },
 };
+
+const METRICAS_GRAFICO = Object.entries(METRICAS).map(([nome, configuracao]) => ({
+  nome,
+  ...configuracao,
+}));
 
 function extrairLista(resposta, chaves) {
   if (Array.isArray(resposta?.data)) return resposta.data;
@@ -54,7 +70,19 @@ function formatarNumero(valor, casas = 1) {
 function obterValor(item, metrica) {
   const chave = metrica.keys.find((nome) => item[nome] !== undefined && item[nome] !== null);
   const valor = chave ? Number(item[chave]) : NaN;
-  return Number.isFinite(valor) ? valor : null;
+  if (!Number.isFinite(valor)) return null;
+  return metrica.transform ? metrica.transform(valor) : valor;
+}
+
+function abreviarData(valor) {
+  const data = converterData(valor);
+  return data ? data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
+}
+
+function amostrarRegistros(registros, limite = 120) {
+  if (registros.length <= limite) return registros;
+  const passo = (registros.length - 1) / (limite - 1);
+  return Array.from({ length: limite }, (_, indice) => registros[Math.round(indice * passo)]);
 }
 
 function agruparPorDia(registros, metrica) {
@@ -96,7 +124,7 @@ function agruparPorDia(registros, metrica) {
 
 export default function Relatorios() {
   const [filtroPeriodo, setFiltroPeriodo] = useState('Últimos 7 dias');
-  const [filtroMetrica, setFiltroMetrica] = useState('Consumo (kWh)');
+  const [filtroMetrica, setFiltroMetrica] = useState('Todas as grandezas');
   const [filtroLocal, setFiltroLocal] = useState('Todos');
   const [filtroSetor, setFiltroSetor] = useState('Todos');
   const [locais, setLocais] = useState([]);
@@ -165,18 +193,53 @@ export default function Relatorios() {
     };
   }, [carregarRelatorio]);
 
-  const metrica = METRICAS[filtroMetrica];
+  const exibirTodas = filtroMetrica === 'Todas as grandezas';
+  const metrica = METRICAS[filtroMetrica] ?? METRICAS['Consumo (kWh)'];
   const registrosValidos = useMemo(
-    () => registros.filter((item) => obterValor(item, metrica) !== null),
-    [registros, metrica]
+    () => registros.filter((item) => METRICAS_GRAFICO.some((itemMetrica) => obterValor(item, itemMetrica) !== null)),
+    [registros]
   );
   const linhas = useMemo(
     () => agruparPorDia(registrosValidos, metrica),
     [registrosValidos, metrica]
   );
 
+  const dadosGrafico = useMemo(() => amostrarRegistros(registrosValidos).map((item) => {
+    const ponto = { momento: abreviarData(item.data_hora) };
+    ponto.__originais = {};
+    METRICAS_GRAFICO.forEach((itemMetrica) => {
+      const valor = obterValor(item, itemMetrica);
+      if (valor !== null) {
+        ponto[itemMetrica.nome] = valor;
+        ponto.__originais[itemMetrica.nome] = valor;
+      }
+    });
+    return ponto;
+  }).map((ponto, _indice, pontos) => {
+    if (!exibirTodas) return ponto;
+    const normalizado = { ...ponto };
+    METRICAS_GRAFICO.forEach((itemMetrica) => {
+      const valores = pontos.map(item => item.__originais[itemMetrica.nome]).filter(valor => Number.isFinite(valor));
+      const valor = ponto.__originais[itemMetrica.nome];
+      if (!Number.isFinite(valor) || !valores.length) return;
+      const minimo = Math.min(...valores);
+      const faixa = Math.max(Math.max(...valores) - minimo, 1e-9);
+      normalizado[itemMetrica.nome] = ((valor - minimo) / faixa) * 100;
+    });
+    return normalizado;
+  }), [registrosValidos, exibirTodas]);
+
+  const metricasExibidas = exibirTodas
+    ? METRICAS_GRAFICO
+    : METRICAS_GRAFICO.filter((itemMetrica) => itemMetrica.nome === filtroMetrica);
+
+  const dadosGraficoReal = useMemo(() => dadosGrafico.map((item) => ({
+    momento: item.momento,
+    ...item.__originais,
+  })), [dadosGrafico]);
+
   const resumo = useMemo(() => {
-    const valores = registrosValidos.map((item) => obterValor(item, metrica));
+    const valores = registrosValidos.map((item) => obterValor(item, metrica)).filter(valor => valor !== null);
     const soma = valores.reduce((acumulado, valor) => acumulado + valor, 0);
     const total = metrica.acumulada && valores.length > 1
       ? Math.max(...valores) - Math.min(...valores)
@@ -195,7 +258,70 @@ export default function Relatorios() {
     };
   }, [registrosValidos, metrica, filtroMetrica, linhas.length]);
 
+  const resumosMetricas = useMemo(() => METRICAS_GRAFICO.map((itemMetrica) => {
+    const valores = registrosValidos.map((item) => obterValor(item, itemMetrica)).filter(valor => valor !== null);
+    const media = valores.length ? valores.reduce((soma, valor) => soma + valor, 0) / valores.length : 0;
+    return {
+      ...itemMetrica,
+      media,
+      minimo: valores.length ? Math.min(...valores) : 0,
+      maximo: valores.length ? Math.max(...valores) : 0,
+      ultimo: valores.at(-1) ?? 0,
+    };
+  }), [registrosValidos]);
+
   const imprimirRelatorio = () => window.print();
+
+  const criarImagemGrafico = (itemMetrica) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1400;
+    canvas.height = 300;
+    const contexto = canvas.getContext('2d');
+    const margem = { topo: 48, direita: 32, baixo: 42, esquerda: 70 };
+    const largura = canvas.width - margem.esquerda - margem.direita;
+    const altura = canvas.height - margem.topo - margem.baixo;
+    const valores = dadosGraficoReal.map(item => item[itemMetrica.nome]).filter(valor => Number.isFinite(valor));
+    const minimo = valores.length ? Math.min(...valores) : 0;
+    const maximo = valores.length ? Math.max(...valores) : 1;
+    const faixa = maximo - minimo || 1;
+
+    contexto.fillStyle = '#ffffff';
+    contexto.fillRect(0, 0, canvas.width, canvas.height);
+    contexto.font = '18px Arial';
+    contexto.fillStyle = '#0f172a';
+    contexto.fillText(`${itemMetrica.nome} (${itemMetrica.unit || 'sem unidade'})`, margem.esquerda, 28);
+
+    contexto.strokeStyle = '#cbd5e1';
+    contexto.lineWidth = 1;
+    for (let indice = 0; indice <= 4; indice += 1) {
+      const y = margem.topo + (altura * indice) / 4;
+      contexto.beginPath();
+      contexto.moveTo(margem.esquerda, y);
+      contexto.lineTo(margem.esquerda + largura, y);
+      contexto.stroke();
+      contexto.fillStyle = '#64748b';
+      contexto.font = '12px Arial';
+      const escala = maximo - ((maximo - minimo) * indice) / 4;
+      contexto.fillText(formatarNumero(escala, itemMetrica.casas ?? 1), 12, y + 4);
+    }
+
+    contexto.strokeStyle = itemMetrica.cor;
+    contexto.lineWidth = 3;
+    contexto.beginPath();
+    let desenhou = false;
+    dadosGraficoReal.forEach((item, indice) => {
+      const valor = item[itemMetrica.nome];
+      if (!Number.isFinite(valor)) return;
+      const x = margem.esquerda + (largura * indice) / Math.max(dadosGraficoReal.length - 1, 1);
+      const y = margem.topo + altura - ((valor - minimo) / faixa) * altura;
+      if (!desenhou) contexto.moveTo(x, y);
+      else contexto.lineTo(x, y);
+      desenhou = true;
+    });
+    contexto.stroke();
+
+    return canvas.toDataURL('image/png', 1);
+  };
 
   const exportarPDF = () => {
     if (!registrosValidos.length) return;
@@ -207,34 +333,67 @@ export default function Relatorios() {
     documento.setFontSize(18);
     documento.text(titulo, 14, 16);
     documento.setFontSize(10);
-    documento.text(`Período: ${filtroPeriodo} | Métrica: ${filtroMetrica}`, 14, 23);
+    documento.text(`Período: ${filtroPeriodo} | Grandezas: ${filtroMetrica}`, 14, 23);
     documento.text(`Local: ${filtroLocal} | Setor: ${filtroSetor}`, 14, 29);
     documento.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 35);
 
-    autoTable(documento, {
-      startY: 42,
-      head: [['Resumo', 'Valor']],
-      body: [
+    const linhasResumo = exibirTodas
+      ? resumosMetricas.map(itemMetrica => [
+        itemMetrica.nome,
+        `Média: ${formatarNumero(itemMetrica.media, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`,
+        `Mín.: ${formatarNumero(itemMetrica.minimo, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`,
+        `Máx.: ${formatarNumero(itemMetrica.maximo, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`,
+        `Último: ${formatarNumero(itemMetrica.ultimo, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`,
+      ])
+      : [
         [metrica.acumulada ? 'Total do período' : 'Valor principal', `${formatarNumero(resumo.principal)} ${metrica.unit}`],
         ['Média', `${formatarNumero(resumo.media)} ${metrica.unit}`],
         ['Maior valor', `${formatarNumero(resumo.pico)} ${metrica.unit}`],
         ['Custo estimado', `R$ ${formatarNumero(resumo.custo, 2)}`],
-      ],
+      ];
+
+    autoTable(documento, {
+      startY: 42,
+      head: [exibirTodas ? ['Grandeza', 'Média', 'Mínimo', 'Máximo', 'Último'] : ['Resumo', 'Valor']],
+      body: linhasResumo,
       theme: 'grid',
       headStyles: { fillColor: [37, 99, 235] },
     });
 
-    autoTable(documento, {
-      startY: documento.lastAutoTable.finalY + 8,
-      head: [['Data', 'Leituras', 'Média', 'Mínimo', 'Máximo', 'Variação']],
-      body: linhas.map((linha) => [
+    let proximaPosicaoGrafico = documento.lastAutoTable.finalY + 8;
+    metricasExibidas.forEach((itemMetrica) => {
+      if (proximaPosicaoGrafico + 62 > 195) {
+        documento.addPage();
+        proximaPosicaoGrafico = 16;
+      }
+      documento.addImage(criarImagemGrafico(itemMetrica), 'PNG', 14, proximaPosicaoGrafico, 269, 58);
+      proximaPosicaoGrafico += 64;
+    });
+
+    const linhasTabela = exibirTodas
+      ? metricasExibidas.flatMap((itemMetrica) => agruparPorDia(registrosValidos, itemMetrica).map((linha) => [
+        itemMetrica.nome,
+        linha.data,
+        linha.quantidade,
+        `${formatarNumero(linha.valor, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`,
+        `${formatarNumero(linha.minimo, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`,
+        `${formatarNumero(linha.maximo, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`,
+      ]))
+      : linhas.map((linha) => [
         linha.data,
         linha.quantidade,
         `${formatarNumero(linha.valor)} ${metrica.unit}`,
         `${formatarNumero(linha.minimo)} ${metrica.unit}`,
         `${formatarNumero(linha.maximo)} ${metrica.unit}`,
         `${linha.variacao >= 0 ? '+' : ''}${formatarNumero(linha.variacao)}%`,
-      ]),
+      ]);
+
+    autoTable(documento, {
+      startY: proximaPosicaoGrafico + 4,
+      head: [exibirTodas
+        ? ['Grandeza', 'Data', 'Leituras', 'Média', 'Mínimo', 'Máximo']
+        : ['Data', 'Leituras', 'Média', 'Mínimo', 'Máximo', 'Variação']],
+      body: linhasTabela,
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42] },
     });
@@ -275,6 +434,7 @@ export default function Relatorios() {
           {setores.map((setor) => <option key={setor.id ?? setor.nome} value={setor.nome}>{setor.nome}</option>)}
         </select>
         <select value={filtroMetrica} onChange={(e) => setFiltroMetrica(e.target.value)} className="rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-600">
+          <option>Todas as grandezas</option>
           {Object.keys(METRICAS).map((metricaNome) => <option key={metricaNome}>{metricaNome}</option>)}
         </select>
         <span className="text-[11px] text-slate-500">{atualizadoEm ? `Atualizado às ${atualizadoEm}` : 'Carregando...'}</span>
@@ -283,7 +443,7 @@ export default function Relatorios() {
       <section id="relatorio-impressao" className="space-y-6 rounded-2xl print:space-y-4 print:bg-white">
         <header className="hidden print:block">
           <h1 className="text-2xl font-bold">Relatório de medições</h1>
-          <p>Período: {filtroPeriodo} | Métrica: {filtroMetrica}</p>
+          <p>Período: {filtroPeriodo} | Grandezas: {filtroMetrica}</p>
           <p>Local: {filtroLocal} | Setor: {filtroSetor}</p>
         </header>
 
@@ -302,6 +462,51 @@ export default function Relatorios() {
               <p className="mt-1 text-xs text-slate-400 print:text-gray-600">{legenda}</p>
             </div>
           ))}
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-sm font-bold text-white print:text-black">Grandezas ao longo do tempo</h2>
+              <p className="text-[11px] text-slate-400 print:text-gray-600">
+                Cada grandeza possui seu próprio eixo e escala para manter o gráfico legível.
+              </p>
+            </div>
+            <span className="text-[11px] text-slate-500">{dadosGraficoReal.length} pontos exibidos</span>
+          </div>
+          {dadosGraficoReal.length ? metricasExibidas.map((itemMetrica) => {
+            const dadosMetrica = dadosGraficoReal
+              .map((item) => ({ momento: item.momento, valor: item[itemMetrica.nome] }))
+              .filter((item) => Number.isFinite(item.valor));
+            const valores = dadosMetrica.map((item) => item.valor);
+            const menor = Math.min(...valores);
+            const maior = Math.max(...valores);
+            const margem = maior === menor ? Math.max(Math.abs(menor) * 0.05, 1) : (maior - menor) * 0.12;
+            return (
+              <article key={itemMetrica.nome} className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-4 print:border-gray-300 print:bg-white">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h3 className="text-xs font-bold text-white print:text-black">{itemMetrica.nome} {itemMetrica.unit && `(${itemMetrica.unit})`}</h3>
+                  <span className="text-[11px] text-slate-500">{dadosMetrica.length} leituras</span>
+                </div>
+                <div className="h-[250px] w-full min-w-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dadosMetrica} margin={{ top: 8, right: 16, left: 4, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#263448" vertical={false} />
+                      <XAxis dataKey="momento" minTickGap={28} stroke="#8191A5" tick={{ fontSize: 10 }} />
+                      <YAxis domain={[menor - margem, maior + margem]} stroke="#8191A5" tick={{ fontSize: 10 }} width={52} />
+                      <Tooltip
+                        contentStyle={{ background: '#101827', border: '1px solid #263448', borderRadius: 12, color: '#e2e8f0' }}
+                        formatter={(valor) => [`${formatarNumero(valor, itemMetrica.casas ?? 1)} ${itemMetrica.unit}`, itemMetrica.nome]}
+                      />
+                      <Line type="monotone" dataKey="valor" name={itemMetrica.nome} connectNulls dot={false} stroke={itemMetrica.cor} strokeWidth={2.5} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </article>
+            );
+          }) : (
+            <div className="rounded-2xl border border-dashed border-slate-800 p-16 text-center text-sm text-slate-400">Nenhuma medição encontrada para o período selecionado.</div>
+          )}
         </section>
 
         <section className="overflow-hidden rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 print:border-gray-300 print:bg-white">

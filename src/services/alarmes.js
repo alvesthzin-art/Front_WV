@@ -41,12 +41,14 @@ export function mensagemErroAlarmes(erro) {
 
 export async function reconhecerAlarme(id) {
   const config = credenciais();
-  const token = config.headers?.Authorization.slice(7);
+  const token = config.headers?.Authorization?.slice(7);
   let usuario;
-  try {
-    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    usuario = Number(JSON.parse(atob(payload)).id);
-  } catch { throw new Error('Autentica\u00e7\u00e3o necess\u00e1ria para reconhecer o alarme.'); }
-  if (!Number.isSafeInteger(usuario) || usuario <= 0) throw new Error('Usu\u00e1rio inv\u00e1lido.');
-  await api.patch(`/alertas/${encodeURIComponent(id)}/reconhecer`, { id_usuario: usuario }, config);
+  if (token) {
+    try {
+      const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      usuario = Number(JSON.parse(atob(payload)).id);
+    } catch { throw new Error('Token de autenticação inválido.'); }
+    if (!Number.isSafeInteger(usuario) || usuario <= 0) throw new Error('Usuário inválido.');
+  }
+  await api.patch(`/alertas/${encodeURIComponent(id)}/reconhecer`, usuario ? { id_usuario: usuario } : {}, config);
 }

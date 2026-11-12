@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Activity, TrendingUp, Zap } from 'lucide-react';
 
 import FiltrosMedicao from '../components/medicoes/filtrosMedicao';
@@ -16,9 +16,6 @@ const HORAS_POR_PERIODO = {
   'Últimos 7 dias': 168,
   'Últimos 30 dias': 720,
 };
-
-// Janela móvel do gráfico: últimos 60 segundos.
-const JANELA_GRAFICO_MS = 60 * 1000;
 
 function converterData(data) {
   if (!data) return null;
@@ -37,9 +34,6 @@ export default function Medicao() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
 
-  // Relógio usado somente para movimentar a janela do gráfico.
-  const [agoraGrafico, setAgoraGrafico] = useState(Date.now());
-
   const [filtros, setFiltros] = useState({
     local: 'Todos os locais',
     setor: 'Todos os setores',
@@ -53,15 +47,6 @@ export default function Medicao() {
     valorMaximo: '0.0',
     valorAtual: '0.0',
   });
-
-  // Atualiza o relógio a cada segundo para movimentar o eixo X.
-  useEffect(() => {
-    const intervaloRelogio = setInterval(() => {
-      setAgoraGrafico(Date.now());
-    }, 1000);
-
-    return () => clearInterval(intervaloRelogio);
-  }, []);
 
   useEffect(() => {
     let ativo = true;
@@ -145,37 +130,35 @@ export default function Medicao() {
       }
     }
 
-    setCarregando(true);
-    carregarMedicoesReais();
-
+    const agendamento = setTimeout(() => {
+      setCarregando(true);
+      void carregarMedicoesReais();
+    }, 0);
     const intervalo = setInterval(carregarMedicoesReais, 5000);
 
     return () => {
       ativo = false;
+      clearTimeout(agendamento);
       clearInterval(intervalo);
     };
   }, [filtros.periodo]);
 
-  // Dados exclusivos do gráfico.
-  // Quando o período é Hoje, mostra somente os últimos 60 segundos.
-  // Nos outros períodos, mantém o histórico selecionado.
   const dadosGrafico = useMemo(() => {
-    if (filtros.periodo !== 'Hoje') {
-      return dadosMedicoes;
-    }
+    if (!['Hoje', 'Ontem'].includes(filtros.periodo)) return dadosMedicoes;
 
-    const inicioJanela = agoraGrafico - JANELA_GRAFICO_MS;
+    const agora = new Date();
+    const inicio = new Date(agora);
+    inicio.setHours(0, 0, 0, 0);
+    if (filtros.periodo === 'Ontem') inicio.setDate(inicio.getDate() - 1);
+
+    const fim = new Date(inicio);
+    fim.setDate(fim.getDate() + 1);
 
     return dadosMedicoes.filter((item) => {
       const data = converterData(item.data_hora);
-
-      if (!data) return false;
-
-      const tempo = data.getTime();
-
-      return tempo >= inicioJanela && tempo <= agoraGrafico;
+      return data && data >= inicio && data < fim;
     });
-  }, [dadosMedicoes, filtros.periodo, agoraGrafico]);
+  }, [dadosMedicoes, filtros.periodo]);
 
   // A tabela continua recebendo o histórico completo.
   const dadosBrutos = useMemo(() => {

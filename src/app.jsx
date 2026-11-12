@@ -13,6 +13,7 @@ import Operacional from './pages/operacional';
 import Relatorios from './pages/relatorios';
 import Alarmes from './pages/alarmes'; // Importação da página de Alarmes
 import Conectividade from './pages/conectividade';
+import { limparSessao } from './services/session';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -41,7 +42,10 @@ export default function App() {
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
-        onLogout={() => setIsAuthenticated(false)}
+        onLogout={() => {
+          limparSessao();
+          setIsAuthenticated(false);
+        }}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
       />

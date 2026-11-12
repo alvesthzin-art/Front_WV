@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -33,6 +33,18 @@ const CONFIGURACAO = {
     unidade: 'kWh',
     cor: '#eab308',
   },
+  Frequência: {
+    campo: 'frequencia',
+    alternativa: 'frequência',
+    unidade: 'Hz',
+    cor: '#a855f7',
+  },
+  'Fator de potência': {
+    campo: 'fator_potencia',
+    alternativa: 'fator_de_potencia',
+    unidade: '',
+    cor: '#f97316',
+  },
 };
 
 function converterData(data) {
@@ -41,33 +53,6 @@ function converterData(data) {
   const resultado = new Date(String(data).replace(' ', 'T'));
 
   return Number.isNaN(resultado.getTime()) ? null : resultado;
-}
-
-function inicioDoPeriodo(periodo) {
-  const agora = new Date();
-
-  if (periodo === 'Hoje') {
-    const inicio = new Date(agora);
-    inicio.setHours(0, 0, 0, 0);
-    return inicio.getTime();
-  }
-
-  if (periodo === 'Ontem') {
-    const inicio = new Date(agora);
-    inicio.setDate(inicio.getDate() - 1);
-    inicio.setHours(0, 0, 0, 0);
-    return inicio.getTime();
-  }
-
-  if (periodo === 'Últimos 7 dias') {
-    return agora.getTime() - 7 * 24 * 60 * 60 * 1000;
-  }
-
-  if (periodo === 'Últimos 30 dias') {
-    return agora.getTime() - 30 * 24 * 60 * 60 * 1000;
-  }
-
-  return agora.getTime() - 24 * 60 * 60 * 1000;
 }
 
 export default function TensaoAoLongoDoTempo({
@@ -80,8 +65,6 @@ export default function TensaoAoLongoDoTempo({
     CONFIGURACAO[grandeza] || CONFIGURACAO.Tensão;
 
   const dadosGrafico = useMemo(() => {
-    const inicio = inicioDoPeriodo(periodo);
-
     return dados
       .map((item) => {
         const data = converterData(item.data_hora);
@@ -108,11 +91,10 @@ export default function TensaoAoLongoDoTempo({
       .filter(
         (item) =>
           item.instante !== null &&
-          item.instante >= inicio &&
           Number.isFinite(item.valor)
       )
       .sort((a, b) => a.instante - b.instante);
-  }, [dados, configuracao, periodo]);
+  }, [dados, configuracao]);
 
   const escalaY = useMemo(() => {
     if (dadosGrafico.length === 0) return [0, 10];
