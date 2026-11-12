@@ -12,6 +12,7 @@ import Medicao from './pages/medicoes';
 import Operacional from './pages/operacional';
 import Relatorios from './pages/relatorios';
 import Alarmes from './pages/alarmes'; // Importação da página de Alarmes
+import Conectividade from './pages/conectividade';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -68,6 +69,8 @@ export default function App() {
             <Relatorios />
           ) : pageKey === 'alarmes' ? (
             <Alarmes />
+          ) : pageKey === 'conectividade' ? (
+            <Conectividade />
           ) : (
             <div className="m-6 rounded-2xl border border-slate-800/60 bg-slate-900/80 backdrop-blur-md p-6">
               <h2 className="text-lg font-semibold text-white">
