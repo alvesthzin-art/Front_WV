@@ -15,6 +15,10 @@ import {
   Check,
   Info,
   Save,
+  Eye,
+  Pencil,
+  Power,
+  Trash2,
 } from 'lucide-react';
 
 const VINCULO_ICONS = {
@@ -53,6 +57,8 @@ function ConectividadeTabela({
   onSalvarConfiguracao,
   onVerDetalhes,
   onEditar,
+  onAlterarStatus,
+  onExcluir,
 }) {
   const [abaAtiva, setAbaAtiva] = useState('status');
   const [filtro, setFiltro] = useState('');
@@ -92,12 +98,16 @@ function ConectividadeTabela({
     }
   }, [configuracaoGlobal]);
 
-  const filtrados = dispositivos.filter(
-    (d) =>
-      d.id.toLowerCase().includes(filtro.toLowerCase()) ||
-      (d.relacionadoNome || '').toLowerCase().includes(filtro.toLowerCase()) ||
-      (d.local || '').toLowerCase().includes(filtro.toLowerCase())
-  );
+  const filtrados = dispositivos.filter((d) => {
+    const termo = filtro.toLowerCase();
+    return (
+      (d.id || '').toLowerCase().includes(termo) ||
+      (d.nome || '').toLowerCase().includes(termo) ||
+      (d.relacionadoNome || '').toLowerCase().includes(termo) ||
+      (d.local || '').toLowerCase().includes(termo) ||
+      (d.setor || '').toLowerCase().includes(termo)
+    );
+  });
 
   const totalEventos = eventosHistorico.length;
   const totalPaginas = Math.max(1, Math.ceil(totalEventos / ITENS_POR_PAGINA));
@@ -182,19 +192,30 @@ function ConectividadeTabela({
                     </td>
                   </tr>
                 ))
+              ) : filtrados.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-8 px-5 text-center text-xs text-[#9ca1a6]">
+                    Nenhum dispositivo encontrado.
+                  </td>
+                </tr>
               ) : (
                 filtrados.map((dev) => {
                   const IconeVinculo = VINCULO_ICONS[dev.vinculoTipo] || HelpCircle;
                   const isOnline = dev.status === 'Online';
+                  const isInstavel = dev.status === 'Instável';
+                  const chaveMenu = dev.id_dispositivo_iot || dev.id;
 
                   return (
                     <tr
-                      key={dev.id}
-                      onClick={() => onVerDetalhes(dev)}
+                      key={chaveMenu}
+                      onClick={() => onVerDetalhes && onVerDetalhes(dev)}
                       className="hover:bg-[#17315F]/20 transition-colors cursor-pointer"
                     >
                       <td className="py-4 px-5">
                         <div className="font-semibold text-[#C0C5C8]">{dev.id}</div>
+                        {dev.nome && dev.nome !== dev.id && (
+                          <div className="text-[11px] text-[#9ca1a6] mt-0.5">{dev.nome}</div>
+                        )}
                         {dev.pontoAtivo && (
                           <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#102520] text-[#2A8246] border border-[#2A8246]/30">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#2A8246]" />
@@ -225,53 +246,100 @@ function ConectividadeTabela({
                         </span>
                       </td>
 
-                      <td className="py-4 px-4 text-xs text-[#C0C5C8] font-medium">{dev.ultimoContato}</td>
+                      <td className="py-4 px-4 text-xs text-[#C0C5C8] font-medium">
+                        {dev.ultimoContato}
+                      </td>
 
                       <td className="py-4 px-4">
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
                             isOnline
                               ? 'bg-[#102520] text-[#2A8246] border-[#2A8246]/30'
-                              : 'bg-[#17315F]/40 text-[#9ca1a6] border-[#17315F]'
+                              : isInstavel
+                                ? 'bg-[#4F3E1A]/40 text-[#AFA183] border-[#AFA183]/30'
+                                : 'bg-[#17315F]/40 text-[#9ca1a6] border-[#17315F]'
                           }`}
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
-                              isOnline ? 'bg-[#2A8246]' : 'bg-[#9ca1a6]'
+                              isOnline
+                                ? 'bg-[#2A8246]'
+                                : isInstavel
+                                  ? 'bg-[#AFA183]'
+                                  : 'bg-[#9ca1a6]'
                             }`}
                           />
                           {dev.status}
                         </span>
                       </td>
 
-                      <td className="py-4 px-5 text-right relative" onClick={(e) => e.stopPropagation()}>
+                      <td
+                        className="py-4 px-5 text-right relative"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <button
-                          onClick={() => setMenuAbertoId(menuAbertoId === dev.id ? null : dev.id)}
+                          type="button"
+                          onClick={() =>
+                            setMenuAbertoId(menuAbertoId === chaveMenu ? null : chaveMenu)
+                          }
                           className="p-1.5 rounded-lg text-[#9ca1a6] hover:bg-[#17315F]/50 hover:text-white transition-colors cursor-pointer"
                         >
                           <MoreVertical size={16} />
                         </button>
 
-                        {menuAbertoId === dev.id && (
-                          <div className="absolute right-5 mt-1 w-36 rounded-xl bg-[#111622] border border-[#17315F] shadow-xl py-1 z-20 text-left">
+                        {menuAbertoId === chaveMenu && (
+                          <div className="absolute right-5 mt-1 w-44 rounded-xl bg-[#111622] border border-[#17315F] shadow-xl py-1 z-20 text-left">
                             <button
+                              type="button"
                               onClick={() => {
                                 setMenuAbertoId(null);
-                                onVerDetalhes(dev);
+                                onVerDetalhes && onVerDetalhes(dev);
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-[#C0C5C8] hover:bg-[#17315F] transition-colors cursor-pointer"
+                              className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-[#C0C5C8] hover:bg-[#17315F] transition-colors cursor-pointer"
                             >
+                              <Eye size={13} />
                               Ver detalhes
                             </button>
+
                             <button
+                              type="button"
                               onClick={() => {
                                 setMenuAbertoId(null);
-                                onEditar(dev);
+                                onEditar && onEditar(dev);
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-[#C0C5C8] hover:bg-[#17315F] transition-colors cursor-pointer"
+                              className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-[#C0C5C8] hover:bg-[#17315F] transition-colors cursor-pointer"
                             >
+                              <Pencil size={13} />
                               Editar dispositivo
                             </button>
+
+                            {onAlterarStatus && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMenuAbertoId(null);
+                                  onAlterarStatus(dev, isOnline ? 'Offline' : 'Online');
+                                }}
+                                className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-[#C0C5C8] hover:bg-[#17315F] transition-colors cursor-pointer"
+                              >
+                                <Power size={13} />
+                                {isOnline ? 'Marcar Offline' : 'Marcar Online'}
+                              </button>
+                            )}
+
+                            {onExcluir && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMenuAbertoId(null);
+                                  onExcluir(dev);
+                                }}
+                                className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-red-400 hover:bg-red-500/15 transition-colors cursor-pointer border-t border-[#17315F]/40 mt-1 pt-2"
+                              >
+                                <Trash2 size={13} />
+                                Excluir dispositivo
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>
@@ -298,6 +366,7 @@ function ConectividadeTabela({
                 return (
                   <button
                     key={periodo}
+                    type="button"
                     onClick={() => {
                       setPeriodoAtivo(periodo);
                       setPaginaAtual(1);
@@ -345,44 +414,56 @@ function ConectividadeTabela({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#17315F]/30 text-sm">
-                {eventosPaginados.map((item) => {
-                  const isReconectado = item.evento === 'Reconectado';
+                {eventosPaginados.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 px-5 text-center text-xs text-[#9ca1a6]">
+                      Nenhum evento de conectividade registrado no período.
+                    </td>
+                  </tr>
+                ) : (
+                  eventosPaginados.map((item) => {
+                    const isReconectado = item.evento === 'Reconectado';
 
-                  return (
-                    <tr key={item.id} className="hover:bg-[#17315F]/15 transition-colors">
-                      <td className="py-3.5 px-5">
-                        <div className="text-xs font-semibold text-[#C0C5C8]">{item.dispositivo}</div>
-                        {item.subtitulo && (
-                          <div className="text-[11px] text-[#4A525B] mt-0.5">{item.subtitulo}</div>
-                        )}
-                      </td>
+                    return (
+                      <tr key={item.id} className="hover:bg-[#17315F]/15 transition-colors">
+                        <td className="py-3.5 px-5">
+                          <div className="text-xs font-semibold text-[#C0C5C8]">
+                            {item.dispositivo}
+                          </div>
+                          {item.subtitulo && (
+                            <div className="text-[11px] text-[#4A525B] mt-0.5">{item.subtitulo}</div>
+                          )}
+                        </td>
 
-                      <td className="py-3.5 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                            isReconectado
-                              ? 'bg-[#102520] text-[#2A8246] border-[#2A8246]/30'
-                              : 'bg-[#4F3E1A]/40 text-[#AFA183] border-[#AFA183]/30'
-                          }`}
-                        >
+                        <td className="py-3.5 px-4">
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              isReconectado ? 'bg-[#2A8246]' : 'bg-[#AFA183]'
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                              isReconectado
+                                ? 'bg-[#102520] text-[#2A8246] border-[#2A8246]/30'
+                                : 'bg-[#4F3E1A]/40 text-[#AFA183] border-[#AFA183]/30'
                             }`}
-                          />
-                          {item.evento}
-                        </span>
-                      </td>
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isReconectado ? 'bg-[#2A8246]' : 'bg-[#AFA183]'
+                              }`}
+                            />
+                            {item.evento}
+                          </span>
+                        </td>
 
-                      <td className="py-3.5 px-4">
-                        <div className="text-xs font-medium text-[#C0C5C8]">{item.dataHora}</div>
-                        <div className="text-[11px] text-[#4A525B] mt-0.5">{item.relativo}</div>
-                      </td>
+                        <td className="py-3.5 px-4">
+                          <div className="text-xs font-medium text-[#C0C5C8]">{item.dataHora}</div>
+                          <div className="text-[11px] text-[#4A525B] mt-0.5">{item.relativo}</div>
+                        </td>
 
-                      <td className="py-3.5 px-5 text-xs font-medium text-[#C0C5C8]">{item.duracao}</td>
-                    </tr>
-                  );
-                })}
+                        <td className="py-3.5 px-5 text-xs font-medium text-[#C0C5C8]">
+                          {item.duracao}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -396,6 +477,7 @@ function ConectividadeTabela({
               </span>
 
               <button
+                type="button"
                 onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
                 disabled={paginaAtual === 1}
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#070A15] border border-[#17315F]/60 text-xs font-semibold text-[#C0C5C8] hover:bg-[#17315F]/40 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
@@ -405,6 +487,7 @@ function ConectividadeTabela({
               </button>
 
               <button
+                type="button"
                 onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
                 disabled={paginaAtual === totalPaginas}
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#070A15] border border-[#17315F]/60 text-xs font-semibold text-[#C0C5C8] hover:bg-[#17315F]/40 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"

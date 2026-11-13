@@ -26,7 +26,7 @@ export default function Operacional() {
 
   const [formEdicao, setFormEdicao] = useState({});
 
-  // Função para carregar dados e relacionar Equipamentos com Setores e Locais do MySQL
+  // Carrega dados e relaciona Equipamentos com Setores e Locais do MySQL
   const carregarDadosOperacionais = async () => {
     try {
       const [resEquipamentos, resSetores, resLocais] = await Promise.all([
@@ -35,27 +35,32 @@ export default function Operacional() {
         api.get('/locais').catch(() => ({ data: [] }))
       ]);
 
-      const listaEquipamentos = Array.isArray(resEquipamentos.data) 
-        ? resEquipamentos.data 
-        : (resEquipamentos.data?.dados || resEquipamentos.data?.equipamentos || []);
+      const extrair = (res, chave) =>
+        Array.isArray(res.data)
+          ? res.data
+          : (res.data?.dados || res.data?.[chave] || []);
 
-      const listaSetores = Array.isArray(resSetores.data) 
-        ? resSetores.data 
-        : (resSetores.data?.dados || resSetores.data?.setores || []);
+      const listaEquipamentos = extrair(resEquipamentos, 'equipamentos');
+      const listaSetores = extrair(resSetores, 'setores');
+      const listaLocais = extrair(resLocais, 'locais');
 
-      const listaLocais = Array.isArray(resLocais.data) 
-        ? resLocais.data 
-        : (resLocais.data?.dados || resLocais.data?.locais || []);
-
-      // Cruza o id_setor com o setor e o local correspondente para exibição correta na tabela
       const equipamentosEnriquecidos = listaEquipamentos.map(eq => {
-        const setorEncontrado = listaSetores.find(s => s.id === eq.id_setor || s.id_setor === eq.id_setor);
-        const localEncontrado = listaLocais.find(l => l.id === setorEncontrado?.id_local);
+        const idEquip = Number(eq.id_equipamento || eq.id);
+        const setorEncontrado = listaSetores.find(
+          s => Number(s.id_setor || s.id) === Number(eq.id_setor)
+        );
+        const idLocalReal = setorEncontrado?.id_local || eq.id_local || null;
+        const localEncontrado = listaLocais.find(
+          l => Number(l.id_local || l.id) === Number(idLocalReal)
+        );
 
         return {
           ...eq,
-          nomeSetor: setorEncontrado ? setorEncontrado.nome : (eq.setor || 'Setor Padrão'),
-          nomeLocal: localEncontrado ? localEncontrado.nome : (eq.local || 'Planta Industrial')
+          id: idEquip,
+          id_setor: eq.id_setor ? Number(eq.id_setor) : '',
+          id_local: idLocalReal ? Number(idLocalReal) : '',
+          nomeSetor: setorEncontrado ? setorEncontrado.nome : (eq.setor || 'Sem setor'),
+          nomeLocal: localEncontrado ? localEncontrado.nome : (eq.local || 'Sem local')
         };
       });
 
@@ -75,7 +80,7 @@ export default function Operacional() {
 
   const handleSelecionarEquipamento = (item) => {
     setEquipamentoSelecionado(item);
-    setFormEdicao(item);
+    setFormEdicao({ ...item });
   };
 
   const handleSelecionarItemOperacional = (item) => {
@@ -91,61 +96,122 @@ export default function Operacional() {
     setFormEdicao(prev => ({ ...prev, [campo]: valor }));
   };
 
+  // Atualiza id_local e ajusta automaticamente um id_setor pertencente ao novo local
+  const handleTrocarLocalEdicao = (novoIdLocalStr) => {
+    const novoIdLocal = novoIdLocalStr ? Number(novoIdLocalStr) : '';
+    const localObj = locais.find(l => Number(l.id_local || l.id) === novoIdLocal);
+
+    const setoresDoLocal = setores.filter(
+      s => Number(s.id_local) === novoIdLocal
+    );
+    const primeiroSetor = setoresDoLocal[0] || null;
+
+    setFormEdicao(prev => ({
+      ...prev,
+      id_local: novoIdLocal,
+      nomeLocal: localObj?.nome || '',
+      id_setor: primeiroSetor ? Number(primeiroSetor.id_setor || primeiroSetor.id) : '',
+      nomeSetor: primeiroSetor?.nome || ''
+    }));
+  };
+
+  // Atualiza id_setor (coluna real da tbl_equipamento) e sincroniza o Local pai
+  const handleTrocarSetorEdicao = (novoIdSetorStr) => {
+    const novoIdSetor = novoIdSetorStr ? Number(novoIdSetorStr) : '';
+    const setorObj = setores.find(s => Number(s.id_setor || s.id) === novoIdSetor);
+    const localObj = setorObj
+      ? locais.find(l => Number(l.id_local || l.id) === Number(setorObj.id_local))
+      : null;
+
+    setFormEdicao(prev => ({
+      ...prev,
+      id_setor: novoIdSetor,
+      nomeSetor: setorObj?.nome || '',
+      id_local: localObj ? Number(localObj.id_local || localObj.id) : prev.id_local,
+      nomeLocal: localObj?.nome || prev.nomeLocal
+    }));
+  };
+
   // Salvar Alterações (PUT) no Banco de Dados
   const handleSalvarAlteracoes = async () => {
+    if (!formEdicao.id_setor) {
+      alert('Selecione um Setor válido pertencente ao Local escolhido antes de salvar.');
+      return;
+    }
+
     try {
-      await api.put(`/equipamentos/${formEdicao.id}`, formEdicao);
+      const idEquip = Number(formEdicao.id_equipamento || formEdicao.id);
+      const payload = {
+        nome: (formEdicao.nome || '').trim(),
+        codigo: (formEdicao.codigo || '').trim(),
+        fabricante: formEdicao.fabricante || null,
+        modelo: formEdicao.modelo || null,
+        numero_serie: formEdicao.numero_serie || null,
+        tensao_nominal: formEdicao.tensao_nominal ? Number(formEdicao.tensao_nominal) : null,
+        potencia_nominal: formEdicao.potencia_nominal ? Number(formEdicao.potencia_nominal) : 0,
+        data_instalacao: formEdicao.data_instalacao || null,
+        tipo: formEdicao.tipo || null,
+        status: formEdicao.status || 'Ativo',
+        descricao: formEdicao.descricao || null,
+        id_setor: Number(formEdicao.id_setor)
+      };
+
+      await api.put(`/equipamentos/${idEquip}`, payload);
       alert('Alterações salvas com sucesso no banco de dados!');
       setEquipamentoSelecionado(null);
-      carregarDadosOperacionais();
+      await carregarDadosOperacionais();
     } catch (error) {
-      console.error("Erro ao atualizar no banco:", error);
-      alert('Erro ao salvar alterações no banco.');
+      console.error("Erro ao atualizar no banco:", error.response?.data || error);
+      alert(error.response?.data?.mensagem || 'Erro ao salvar alterações no banco.');
     }
   };
 
-  // Cadastrar Novo Item (POST) com suporte adequado ao LocalService do back-end
+  // Cadastrar ou Editar Item via Modal (Equipamentos / Setores / Locais)
   const handleSalvarNovo = async (novoItem) => {
     try {
       if (abaAtiva === 'Equipamentos') {
         const payload = {
           nome: novoItem.nome,
           codigo: novoItem.codigo || `EQ-${Math.floor(Math.random() * 900 + 100)}`,
-          id_setor: novoItem.id_setor ? Number(novoItem.id_setor) : 1,
+          id_setor: novoItem.id_setor ? Number(novoItem.id_setor) : Number(setores[0]?.id_setor || setores[0]?.id || 1),
           status: novoItem.status || 'Ativo',
           potencia_nominal: novoItem.potencia_nominal || 0
         };
         await api.post('/equipamentos', payload);
       } else if (abaAtiva === 'Setores') {
+        const idSetorEditar = itemEmEdicao?.id_setor || itemEmEdicao?.id;
         const payload = {
           nome: novoItem.nome,
-          codigo: novoItem.codigo || `SET-${Math.floor(Math.random() * 900 + 100)}`,
-          id_local: novoItem.id_local ? Number(novoItem.id_local) : Number(locais[0]?.id),
+          codigo: novoItem.codigo || itemEmEdicao?.codigo || `SET-${Math.floor(Math.random() * 900 + 100)}`,
+          id_local: novoItem.id_local
+            ? Number(novoItem.id_local)
+            : Number(itemEmEdicao?.id_local || locais[0]?.id_local || locais[0]?.id),
           responsavel: novoItem.responsavel || null,
           descricao: novoItem.descricao || null,
           status: novoItem.status || 'Ativo'
         };
-        if (itemEmEdicao) await api.put(`/setores/${itemEmEdicao.id}`, payload);
+        if (idSetorEditar) await api.put(`/setores/${idSetorEditar}`, payload);
         else await api.post('/setores', payload);
       } else {
+        const idLocalEditar = itemEmEdicao?.id_local || itemEmEdicao?.id;
         const payload = {
           nome: novoItem.nome,
-          codigo: novoItem.codigo || `LOC-${Math.floor(Math.random() * 900 + 100)}`,
+          codigo: novoItem.codigo || itemEmEdicao?.codigo || `LOC-${Math.floor(Math.random() * 900 + 100)}`,
           endereco: novoItem.endereco || novoItem.localizacao || 'Planta Principal',
           responsavel: novoItem.responsavel || null,
           status: novoItem.status || 'Ativo',
           id_empresa: novoItem.id_empresa ? Number(novoItem.id_empresa) : Number(itemEmEdicao?.id_empresa || 1)
         };
-        if (itemEmEdicao) await api.put(`/locais/${itemEmEdicao.id}`, payload);
+        if (idLocalEditar) await api.put(`/locais/${idLocalEditar}`, payload);
         else await api.post('/locais', payload);
       }
       
       alert(`${itemEmEdicao ? 'Alterações salvas' : 'Item cadastrado'} com sucesso no banco!`);
       setModalAberto(false);
       setItemEmEdicao(null);
-      carregarDadosOperacionais();
+      await carregarDadosOperacionais();
     } catch (error) {
-      console.error("Erro ao cadastrar no banco:", error);
+      console.error("Erro ao cadastrar/atualizar no banco:", error.response?.data || error);
       alert('Erro ao salvar no back-end / banco de dados. Verifique os campos preenchidos.');
     }
   };
@@ -169,11 +235,16 @@ export default function Operacional() {
     });
   };
 
-  // TELA DE DETALHES DO EQUIPAMENTO SEGUINDO EXATAMENTE O PROTÓTIPO
+  // TELA DE DETALHES DO EQUIPAMENTO
   if (equipamentoSelecionado) {
+    // Filtra os setores disponíveis de acordo com o Local selecionado
+    const setoresFiltradosPorLocal = formEdicao.id_local
+      ? setores.filter(s => Number(s.id_local) === Number(formEdicao.id_local))
+      : setores;
+
     return (
       <main className="space-y-6 p-4 md:p-6 text-slate-200 min-h-screen bg-transparent">
-        {/* Barra Superior Informativa do Protótipo */}
+        {/* Barra Superior Informativa */}
         <div className="flex flex-wrap items-center justify-between rounded-2xl border border-slate-800/80 bg-[#0C141F]/90 px-4 py-3 backdrop-blur-md gap-4 text-xs">
           <div className="flex items-center gap-3">
             <button onClick={() => setEquipamentoSelecionado(null)} className="text-slate-400 hover:text-blue-400 transition flex items-center gap-1">
@@ -182,23 +253,23 @@ export default function Operacional() {
             <div className="h-4 w-[1px] bg-slate-800" />
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Online
+              {formEdicao.status || 'Online'}
             </span>
             <span className="text-slate-400 flex items-center gap-1">
               <Clock size={13} /> Última comunicação: há 3 segundos
             </span>
           </div>
           <div className="text-slate-400 hidden xl:block">
-            <span className="text-slate-200 font-medium">{formEdicao.codigo || 'ESP32-008'}</span> &bull;{' '}
-            <span>{formEdicao.nomeLocal || 'Planta Industrial Jandira'}</span> &bull;{' '}
-            <span>{formEdicao.nomeSetor || 'Utilidades'}</span> &bull;{' '}
-            <span className="text-blue-400">{formEdicao.nome || 'Bomba'}</span>
+            <span className="text-slate-200 font-medium">{formEdicao.codigo || '—'}</span> &bull;{' '}
+            <span>{formEdicao.nomeLocal || 'Sem local'}</span> &bull;{' '}
+            <span>{formEdicao.nomeSetor || 'Sem setor'}</span> &bull;{' '}
+            <span className="text-blue-400">{formEdicao.nome || 'Equipamento'}</span>
           </div>
         </div>
 
-        {/* Layout em Grid do Protótipo (Formulário à esquerda | Alarmes à direita) */}
+        {/* Layout em Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Formulário de Informações do Equipamento (Ocupa 2 colunas) */}
+          {/* Formulário de Informações do Equipamento */}
           <div className="xl:col-span-2 rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-6 backdrop-blur-md space-y-5">
             <div>
               <h2 className="text-sm font-bold text-white">Informações do Equipamento</h2>
@@ -229,7 +300,7 @@ export default function Operacional() {
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Fabricante</label>
                 <input 
                   type="text" 
-                  value={formEdicao.fabricante || 'ABB'} 
+                  value={formEdicao.fabricante || ''} 
                   onChange={(e) => handleInputChange('fabricante', e.target.value)} 
                   className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
                 />
@@ -238,7 +309,7 @@ export default function Operacional() {
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Modelo</label>
                 <input 
                   type="text" 
-                  value={formEdicao.modelo || 'ACQ580'} 
+                  value={formEdicao.modelo || ''} 
                   onChange={(e) => handleInputChange('modelo', e.target.value)} 
                   className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
                 />
@@ -248,7 +319,7 @@ export default function Operacional() {
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Número de Série</label>
                 <input 
                   type="text" 
-                  value={formEdicao.numero_serie || 'ABB-ACQ-58008'} 
+                  value={formEdicao.numero_serie || ''} 
                   onChange={(e) => handleInputChange('numero_serie', e.target.value)} 
                   className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
                 />
@@ -257,7 +328,7 @@ export default function Operacional() {
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Tensão Nominal (V)</label>
                 <input 
                   type="text" 
-                  value={formEdicao.tensao_nominal || '380'} 
+                  value={formEdicao.tensao_nominal || ''} 
                   onChange={(e) => handleInputChange('tensao_nominal', e.target.value)} 
                   className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
                 />
@@ -267,7 +338,7 @@ export default function Operacional() {
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Data de Instalação</label>
                 <input 
                   type="text" 
-                  value={formEdicao.data_instalacao || '21/03/2025'} 
+                  value={formEdicao.data_instalacao || ''} 
                   onChange={(e) => handleInputChange('data_instalacao', e.target.value)} 
                   className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition" 
                 />
@@ -276,24 +347,29 @@ export default function Operacional() {
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Local</label>
                 <select 
-                  value={formEdicao.nomeLocal || ''} 
-                  onChange={(e) => handleInputChange('nomeLocal', e.target.value)} 
+                  value={formEdicao.id_local || ''} 
+                  onChange={(e) => handleTrocarLocalEdicao(e.target.value)} 
                   className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition"
                 >
-                  <option value="Planta Industrial Jandira">Planta Industrial Jandira</option>
-                  {locais.map(l => <option key={l.id} value={l.nome}>{l.nome}</option>)}
+                  <option value="">Selecione um Local...</option>
+                  {locais.map(l => {
+                    const idL = l.id_local || l.id;
+                    return <option key={idL} value={idL}>{l.nome}</option>;
+                  })}
                 </select>
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Setor</label>
                 <select 
-                  value={formEdicao.nomeSetor || ''} 
-                  onChange={(e) => handleInputChange('nomeSetor', e.target.value)} 
+                  value={formEdicao.id_setor || ''} 
+                  onChange={(e) => handleTrocarSetorEdicao(e.target.value)} 
                   className="w-full rounded-xl border border-slate-800 bg-[#101827] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition"
                 >
-                  <option value="Utilidades">Utilidades</option>
-                  <option value="Produção">Produção</option>
-                  {setores.map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
+                  <option value="">Selecione um Setor...</option>
+                  {setoresFiltradosPorLocal.map(s => {
+                    const idS = s.id_setor || s.id;
+                    return <option key={idS} value={idS}>{s.nome}</option>;
+                  })}
                 </select>
               </div>
 
@@ -325,8 +401,9 @@ export default function Operacional() {
                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Descrição</label>
                 <textarea 
                   rows={3}
-                  value={formEdicao.descricao || 'Descreva o equipamento, localização física, observações...'} 
+                  value={formEdicao.descricao || ''} 
                   onChange={(e) => handleInputChange('descricao', e.target.value)} 
+                  placeholder="Descreva o equipamento, localização física, observações..."
                   className="w-full rounded-xl border border-slate-800 bg-[#101827] p-3.5 text-xs text-slate-200 outline-none focus:border-blue-600 transition resize-none" 
                 />
               </div>
@@ -342,7 +419,7 @@ export default function Operacional() {
             </div>
           </div>
 
-          {/* Painel Lateral de Alarmes do Equipamento (Ocupa 1 coluna) */}
+          {/* Painel Lateral de Alarmes do Equipamento */}
           <div className="rounded-2xl border border-slate-800/80 bg-[#0C141F]/80 p-5 backdrop-blur-md space-y-4 h-fit">
             <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
               <div>
@@ -353,7 +430,6 @@ export default function Operacional() {
             </div>
 
             <div className="space-y-3">
-              {/* Alarme Crítico */}
               <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3.5 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
@@ -365,7 +441,6 @@ export default function Operacional() {
                 <p className="text-[10px] text-slate-500 pt-1">Hoje, 14:32</p>
               </div>
 
-              {/* Alarme Alerta */}
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
@@ -377,7 +452,6 @@ export default function Operacional() {
                 <p className="text-[10px] text-slate-500 pt-1">Hoje, 12:15</p>
               </div>
 
-              {/* Alarme Aviso */}
               <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3.5 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
@@ -475,7 +549,7 @@ export default function Operacional() {
               ) : (
                 itensFiltrados().map((item) => (
                   <tr 
-                    key={item.id} 
+                    key={item.id || item.id_setor || item.id_local} 
                     onClick={() => handleSelecionarItemOperacional(item)}
                     className="cursor-pointer transition hover:bg-slate-900/40"
                   >
