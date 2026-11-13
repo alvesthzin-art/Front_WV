@@ -1,80 +1,133 @@
-import React from 'react';
-import {
-  Search,
-  Settings,
-  Bell,
-  RefreshCw
-} from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Search, Settings, ChevronRight, LayoutDashboard, FileBarChart, History, Cpu, MapPin, Layers, Bell, Zap, SlidersHorizontal } from 'lucide-react';
 
-export function Topbar({ activePage, onOpenSettings }) {
-  // Verifica se a página ativa é a Dashboard para ocultar a linha de borda inferior
-  const isDashboard = activePage === 'Dashboard';
+const normalizar = (valor) => String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+// Páginas conhecidas do Watt Vision. Ajuste os IDs para os nomes usados na sua Sidebar/roteador.
+const PAGINAS = [
+  { id: 'Dashboard', label: 'Dashboard', type: 'page', description: 'Visão geral do sistema', keywords: ['inicio', 'painel'], icon: LayoutDashboard },
+  { id: 'Operacional', label: 'Operacional', type: 'page', description: 'Monitoramento operacional', keywords: ['operacao', 'equipamentos'], icon: Cpu },
+  { id: 'Medições', label: 'Medições', type: 'page', description: 'Leituras e grandezas elétricas', keywords: ['medicoes', 'tensao', 'corrente', 'potencia'], icon: Zap },
+  { id: 'Alarmes', label: 'Alarmes', type: 'page', description: 'Alertas e ocorrências', keywords: ['alertas', 'avisos'], icon: Bell },
+  { id: 'Conectividade', label: 'Conectividade', type: 'page', description: 'Conexão e status dos dispositivos', keywords: ['wifi', 'rede', 'online'], icon: Layers },
+  { id: 'Relatórios', label: 'Relatórios', type: 'page', description: 'Gráficos, consumo e custo estimado', keywords: ['relatorios', 'pdf', 'tarifa'], icon: FileBarChart },
+  { id: 'Configurações', label: 'Configurações', type: 'page', description: 'Preferências do sistema', keywords: ['ajustes'], icon: SlidersHorizontal },
+];
+
+/**
+ * Props de integração:
+ * - pages: páginas REAIS da Sidebar (substitui PAGINAS quando fornecido)
+ * - equipamentos, setores, locais, searchItems: arrays de dados já carregados pelo sistema
+ * - onNavigate(item): navegar para página ou abrir detalhe de equipamento/setor/local
+ * - onOpenSettings(): abrir configurações
+ * A Topbar não inventa endpoints e não pesquisa registros que não recebeu.
+ */
+export function Topbar({ activePage, onOpenSettings, onOpenProfile, onNavigate, pages, equipamentos = [], setores = [], locais = [], searchItems = [] }) {
+  const [busca, setBusca] = useState('');
+  const [aberta, setAberta] = useState(false);
+  const [indiceAtivo, setIndiceAtivo] = useState(0);
+  const raiz = useRef(null);
+  const campo = useRef(null);
+
+  const itens = useMemo(() => {
+    const paginas = Array.isArray(pages) ? pages : PAGINAS;
+    const converter = (dados, type, campoNome) => dados.map((item, i) => ({
+      ...item,
+      id: item.id ?? `${type}-${i}`,
+      label: item.label ?? item.nome ?? item.nome_equipamento ?? item.nome_maquina ?? item[campoNome] ?? String(item.id ?? 'Sem nome'),
+      description: item.description ?? (type === 'equipment' ? 'Equipamento' : type === 'sector' ? 'Setor' : 'Local'),
+      type,
+      icon: type === 'equipment' ? Cpu : type === 'sector' ? Layers : MapPin,
+    }));
+    return [
+      ...paginas.map(p => ({ type: 'page', ...p, label: p.label ?? p.nome ?? p.id, icon: p.icon ?? LayoutDashboard })),
+      ...converter(equipamentos, 'equipment', 'equipamento'),
+      ...converter(setores, 'sector', 'setor'),
+      ...converter(locais, 'location', 'local'),
+      ...searchItems.map(item => ({ type: 'other', ...item, label: item.label ?? item.nome ?? String(item.id ?? '') })),
+    ];
+  }, [pages, equipamentos, setores, locais, searchItems]);
+
+  const resultados = useMemo(() => {
+    const termo = normalizar(busca);
+    if (!termo) return [];
+    const palavras = termo.split(/\s+/);
+    return itens.filter(item => {
+      const conteudo = normalizar([item.label, item.description, item.type, item.section, ...(Array.isArray(item.keywords) ? item.keywords : [])].join(' '));
+      return palavras.every(palavra => conteudo.includes(palavra));
+    }).slice(0, 12);
+  }, [busca, itens]);
+
+  useEffect(() => { setIndiceAtivo(0); }, [busca]);
+  useEffect(() => {
+    const fechar = (evento) => { if (raiz.current && !raiz.current.contains(evento.target)) setAberta(false); };
+    document.addEventListener('pointerdown', fechar);
+    return () => document.removeEventListener('pointerdown', fechar);
+  }, []);
+  useEffect(() => {
+    const atalho = (evento) => {
+      if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === 'k') {
+        evento.preventDefault(); campo.current?.focus(); setAberta(true);
+      }
+    };
+    document.addEventListener('keydown', atalho);
+    return () => document.removeEventListener('keydown', atalho);
+  }, []);
+
+  const selecionar = (item) => {
+    if (item.type === 'page' && normalizar(item.label) === 'configuracoes' && typeof onOpenSettings === 'function') {
+      onOpenSettings();
+    } else if (typeof onNavigate === 'function') {
+      onNavigate(item);
+    } else {
+      // Sem função de navegação, não fingir que o item foi aberto.
+      return;
+    }
+    setBusca(''); setAberta(false); campo.current?.blur();
+  };
+
+  const teclado = (evento) => {
+    if (evento.key === 'Escape') { setAberta(false); campo.current?.blur(); return; }
+    if (!aberta || !resultados.length) return;
+    if (evento.key === 'ArrowDown') { evento.preventDefault(); setIndiceAtivo(i => (i + 1) % resultados.length); }
+    if (evento.key === 'ArrowUp') { evento.preventDefault(); setIndiceAtivo(i => (i - 1 + resultados.length) % resultados.length); }
+    if (evento.key === 'Enter') { evento.preventDefault(); selecionar(resultados[indiceAtivo] ?? resultados[0]); }
+  };
 
   return (
-    <header
-      className={`flex flex-shrink-0 items-center justify-between px-6 py-4 bg-slate-950/40 backdrop-blur-md ${
-        !isDashboard ? 'border-b border-slate-800/60' : ''
-      }`}
-    >
-      {/* Título e subtítulo */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-[#C0C5C8]">
-          {activePage}
-        </h1>
-
-        <p className="mt-1 text-xs text-[#9ca1a6]">
-          Visão geral do sistema
-        </p>
+    <header className="relative z-30 flex min-h-[72px] shrink-0 items-center justify-between gap-3 border-b border-[#1D2B40] bg-[#080E1C]/95 px-4 py-3 backdrop-blur-md md:px-6">
+      <div className="min-w-0">
+        <h1 className="truncate text-lg font-bold tracking-tight text-[#E5EAF2] md:text-xl">{activePage}</h1>
+        <p className="mt-0.5 hidden text-[11px] text-[#8794A8] sm:block">Visão geral do sistema</p>
       </div>
-
-      {/* Ações do lado direito */}
-      <div className="flex items-center gap-3">
-        {/* Busca */}
-        <div className="relative hidden sm:block">
-          <Search
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
-            style={{ color: '#4A525B' }}
-          />
-
-          <input
-            type="text"
-            placeholder="Buscar..."
-            className="w-48 rounded-lg border py-2 pl-9 pr-4 text-xs text-[#C0C5C8] outline-none transition-colors placeholder:text-[#4A525B] focus:border-[#2C57A8]"
-            style={{
-              backgroundColor: '#0C141F',
-              borderColor: '#17315F44',
-            }}
-          />
+      <div className="flex min-w-0 items-center gap-2.5">
+        <div ref={raiz} className="relative w-36 sm:w-60 lg:w-80">
+          <div className={`flex h-10 items-center gap-2 rounded-xl border bg-[#0C141F] px-3 transition-all ${aberta ? 'border-[#3B82F6] shadow-[0_0_0_3px_rgba(59,130,246,0.08)]' : 'border-[#263448] hover:border-[#365172]'}`}>
+            <Search size={16} className="shrink-0 text-[#8BA4C8]" />
+            <input ref={campo} type="search" value={busca} onChange={e => { setBusca(e.target.value); setAberta(true); }} onFocus={() => setAberta(true)} onKeyDown={teclado} placeholder="Buscar no sistema..." aria-label="Buscar no sistema" role="combobox" aria-autocomplete="list" aria-expanded={aberta && !!busca.trim()} aria-controls="wattvision-resultados" className="w-full min-w-0 appearance-none bg-transparent text-xs text-slate-100 outline-none placeholder:text-[#67758A] [&::-webkit-search-cancel-button]:hidden" />
+          </div>
+          {aberta && busca.trim() && (
+            <div id="wattvision-resultados" role="listbox" className="absolute right-0 top-[calc(100%+9px)] z-50 max-h-[360px] w-[min(90vw,390px)] overflow-y-auto rounded-xl border border-[#2B3D56] bg-[#101A2A] p-2 shadow-2xl shadow-black/50">
+              <p className="px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#8192A8]">Resultados encontrados ({resultados.length}{resultados.length === 12 ? '+' : ''})</p>
+              {resultados.length ? resultados.map((item, indice) => {
+                const Icone = item.icon ?? Search;
+                return (
+                  <button key={`${item.type}-${item.id}-${indice}`} type="button" role="option" aria-selected={indice === indiceAtivo} onMouseEnter={() => setIndiceAtivo(indice)} onClick={() => selecionar(item)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${indice === indiceAtivo ? 'bg-[#1D3557] text-white' : 'text-[#DCE4F0] hover:bg-[#18273A]'}`}>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400"><Icone size={16}/></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{item.label}</span><span className="mt-0.5 block truncate text-[11px] text-[#91A0B3]">{item.description}</span></span>
+                    <ChevronRight size={15} className="shrink-0 text-[#72849C]" />
+                  </button>
+                );
+              }) : <p className="px-3 py-4 text-xs text-[#91A0B3]">Nenhum resultado encontrado nos dados disponíveis.</p>}
+            </div>
+          )}
         </div>
-
-        {/* Botão Configurações */}
-        <button
-          type="button"
-          aria-label="Configurações"
-          title="Configurações do sistema"
-          onClick={onOpenSettings}
-          className="rounded-lg border p-2 transition-colors hover:bg-[#111622]"
-          style={{
-            backgroundColor: '#0C141F',
-            borderColor: '#17315F44',
-            color: '#9ca1a6',
-          }}
-        >
-          <Settings size={15} />
-        </button>
-
-        {/* Perfil */}
-        <button
-          type="button"
-          aria-label="Perfil do usuário"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white shadow-md"
-          style={{
-            background: 'linear-gradient(135deg, #2C57A8, #0B121E)',
-            boxShadow: '0 2px 12px rgba(44, 87, 168, 0.25)',
-          }}
-        >
-          WV
-        </button>
+        <button type="button" aria-label="Configurações" title="Configurações" onClick={onOpenSettings} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#263448] bg-[#0C141F] text-[#9EACC0] transition-colors hover:border-[#3B82F6]/60 hover:bg-[#17253A] hover:text-blue-300"><Settings size={17}/></button>
+        {onOpenProfile ? (
+          <button type="button" onClick={onOpenProfile} aria-label="Abrir perfil" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-blue-400/30 bg-gradient-to-br from-[#2C57A8] to-[#0B121E] text-xs font-bold text-white">WV</button>
+        ) : (
+          <span aria-label="Watt Vision" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-blue-400/30 bg-gradient-to-br from-[#2C57A8] to-[#0B121E] text-xs font-bold text-white">WV</span>
+        )}
       </div>
     </header>
   );
