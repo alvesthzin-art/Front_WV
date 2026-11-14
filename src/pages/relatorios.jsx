@@ -31,8 +31,6 @@ const HORAS_POR_PERIODO = {
   'Últimos 30 dias': 720,
 };
 
-const TARIFA_PADRAO = 0.8;
-
 const METRICAS = {
   'Consumo (kWh)': { keys: ['energia', 'energia_acumulada', 'consumo'], unit: 'kWh', acumulada: true, cor: '#3b82f6' },
   'Potência (kW)': { keys: ['potencia_ativa', 'potencia'], unit: 'kW', transform: valor => valor / 1000, cor: '#10b981' },
@@ -453,34 +451,34 @@ export default function Relatorios() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-medium text-slate-400">
             Período analisado
-            <select value={filtroPeriodo} onChange={(e) => setFiltroPeriodo(e.target.value)} className="w-full rounded-xl border border-[#263448] bg-[#111C2C] px-3 py-2.5 text-xs text-white outline-none transition focus:border-blue-500">
+            <select value={filtroPeriodo} onChange={(e) => setFiltroPeriodo(e.target.value)} className="wv-filter-control wv-filter-select w-full px-3 text-xs outline-none">
               {Object.keys(HORAS_POR_PERIODO).map((periodo) => <option key={periodo}>{periodo}</option>)}
             </select>
           </label>
           <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-medium text-slate-400">
             Local
-            <select value={filtroLocal} onChange={(e) => setFiltroLocal(e.target.value)} className="w-full rounded-xl border border-[#263448] bg-[#111C2C] px-3 py-2.5 text-xs text-white outline-none transition focus:border-blue-500">
+            <select value={filtroLocal} onChange={(e) => setFiltroLocal(e.target.value)} className="wv-filter-control wv-filter-select w-full px-3 text-xs outline-none">
               <option value="Todos">Todos os locais</option>
               {locais.map((local) => <option key={local.id ?? local.nome} value={local.nome}>{local.nome}</option>)}
             </select>
           </label>
           <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-medium text-slate-400">
             Setor
-            <select value={filtroSetor} onChange={(e) => setFiltroSetor(e.target.value)} className="w-full rounded-xl border border-[#263448] bg-[#111C2C] px-3 py-2.5 text-xs text-white outline-none transition focus:border-blue-500">
+            <select value={filtroSetor} onChange={(e) => setFiltroSetor(e.target.value)} className="wv-filter-control wv-filter-select w-full px-3 text-xs outline-none">
               <option value="Todos">Todos os setores</option>
               {setores.map((setor) => <option key={setor.id ?? setor.nome} value={setor.nome}>{setor.nome}</option>)}
             </select>
           </label>
           <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-medium text-slate-400">
             Grandeza
-            <select value={filtroMetrica} onChange={(e) => setFiltroMetrica(e.target.value)} className="w-full rounded-xl border border-[#263448] bg-[#111C2C] px-3 py-2.5 text-xs text-white outline-none transition focus:border-blue-500">
+            <select value={filtroMetrica} onChange={(e) => setFiltroMetrica(e.target.value)} className="wv-filter-control wv-filter-select w-full px-3 text-xs outline-none">
               <option>Todas as grandezas</option>
               {Object.keys(METRICAS).map((metricaNome) => <option key={metricaNome}>{metricaNome}</option>)}
             </select>
           </label>
           <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-medium text-slate-400">
             Tarifa de energia
-            <span className="flex items-center gap-2 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2.5 transition-colors focus-within:border-blue-400 focus-within:bg-blue-500/15">
+            <span className="wv-filter-control flex items-center gap-2 px-3 transition-colors focus-within:border-blue-400 focus-within:bg-blue-500/15">
               <DollarSign size={15} className="shrink-0 text-blue-400" />
               <span className="text-xs text-slate-300">R$</span>
               <input type="text" inputMode="decimal" aria-label="Tarifa em reais por kWh" value={tarifaTexto} onChange={(e) => atualizarTarifa(e.target.value)} className="w-full min-w-0 bg-transparent text-xs font-bold text-white outline-none" />
@@ -655,4 +653,4 @@ export default function Relatorios() {
     </main>
   );
 }
-  
+

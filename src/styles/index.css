@@ -1,5 +1,119 @@
 @import "tailwindcss";
 
+.theme-app {
+  background: linear-gradient(135deg, #070a15 0%, #0b132b 52%, #070a15 100%);
+}
+
+.wv-topbar {
+  background: rgb(8 14 28 / 88%);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+  backdrop-filter: blur(18px);
+}
+
+.wv-search-shell,
+.wv-topbar-button {
+  background: rgb(12 20 31 / 90%);
+  border-color: #263448;
+}
+
+.wv-search-shell:hover,
+.wv-topbar-button:hover {
+  border-color: rgb(59 130 246 / 70%);
+  background: #142239;
+}
+
+.wv-topbar-button {
+  box-shadow: 0 8px 18px rgb(0 0 0 / 14%);
+}
+
+.wv-profile-button {
+  border-color: rgb(96 165 250 / 40%);
+  background: linear-gradient(145deg, #315fb8, #101b32);
+  box-shadow: 0 8px 18px rgb(0 0 0 / 20%);
+}
+
+.wv-sidebar {
+  background: rgb(5 11 25 / 88%);
+  border-color: rgb(43 61 88 / 55%);
+  backdrop-filter: blur(18px);
+}
+
+.wv-profile-modal {
+  border-color: #263b56;
+  background: #0c141f;
+  color: #dbe7f5;
+}
+
+.wv-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #20334d;
+  border-radius: 12px;
+  padding: 12px;
+  color: #78a9e8;
+}
+
+.wv-profile-row div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wv-profile-row span {
+  color: #8294ab;
+  font-size: 11px;
+}
+
+.wv-profile-row strong {
+  color: #e5edf7;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wv-filter-panel {
+  width: 100%;
+  border: 1px solid #243247;
+  border-radius: 16px;
+  background: #0c141f;
+  padding: 16px;
+}
+
+.wv-filter-control {
+  min-height: 40px;
+  border: 1px solid #263b56 !important;
+  border-radius: 11px;
+  background: #0f1b2c !important;
+  color: #d8e2ef !important;
+  box-shadow: 0 3px 10px rgb(0 0 0 / 10%);
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.wv-filter-control:hover,
+.wv-filter-control:focus-within,
+.wv-filter-control:focus {
+  border-color: #3b82f6 !important;
+  background-color: #142239 !important;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 16%), 0 6px 16px rgb(0 0 0 / 16%);
+}
+
+.wv-filter-select {
+  color: #d8e2ef !important;
+  appearance: none;
+  background-color: transparent !important;
+  background-image: linear-gradient(45deg, transparent 50%, #94a3b8 50%), linear-gradient(135deg, #94a3b8 50%, transparent 50%);
+  background-position: calc(100% - 8px) 50%, calc(100% - 4px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px, 4px 4px;
+  padding-right: 22px !important;
+}
+
+.wv-filter-control option {
+  background: #0f1b2c;
+  color: #d8e2ef;
+}
+
 /* O modo claro é aplicado na raiz para também afetar telas que usam classes
    escuras legadas. Componentes com cores de estado (azul, verde e vermelho)
    continuam preservando sua semântica visual. */
@@ -15,8 +129,62 @@ html[data-theme='light'] #root {
 }
 
 html[data-theme='light'] .theme-app {
-  background: linear-gradient(135deg, #f5f8fc 0%, #edf3f8 50%, #e8eff6 100%) !important;
+  background: #eef3f8 !important;
   color: #111827 !important;
+}
+
+html[data-theme='light'] .wv-topbar {
+  background: rgb(248 251 255 / 92%);
+  box-shadow: 0 10px 26px rgb(71 94 123 / 10%);
+}
+
+html[data-theme='light'] .wv-search-shell,
+html[data-theme='light'] .wv-topbar-button {
+  background: #ffffff;
+  border-color: #c7d5e5;
+  color: #1e293b;
+}
+
+html[data-theme='light'] .wv-search-shell:hover,
+html[data-theme='light'] .wv-topbar-button:hover {
+  background: #f1f6fc;
+  border-color: #6b9ee8;
+}
+
+html[data-theme='light'] .wv-profile-button {
+  border-color: #8eb5e8;
+  background: linear-gradient(145deg, #3c78d8, #1e4d9b);
+}
+
+html[data-theme='light'] .wv-sidebar {
+  background: rgb(248 251 255 / 94%);
+  border-color: #d3deeb;
+}
+
+html[data-theme='light'] .wv-profile-modal {
+  border-color: #cbd8e7;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 24px 60px rgb(45 64 88 / 22%);
+}
+
+html[data-theme='light'] .wv-profile-row {
+  border-color: #d7e2ef;
+  color: #2563a8;
+  background: #f8fbff;
+}
+
+html[data-theme='light'] .wv-profile-row span {
+  color: #64748b;
+}
+
+html[data-theme='light'] .wv-profile-row strong {
+  color: #111827;
+}
+
+html[data-theme='light'] .wv-filter-panel {
+  border-color: #d7e0eb;
+  background: #f8fbff;
 }
 
 html[data-theme='light'] [class*='bg-slate-950'],
@@ -109,6 +277,75 @@ html[data-theme='light'] button[aria-pressed='true'] {
   background: #2563eb !important;
   border-color: #3b82f6 !important;
   color: #ffffff !important;
+}
+
+html[data-theme='light'] .wv-filter-control {
+  border-color: #b9c9dc !important;
+  background: #ffffff !important;
+  color: #111827 !important;
+  box-shadow: 0 3px 10px rgb(71 94 123 / 8%);
+}
+
+html[data-theme='light'] .wv-filter-control:focus-within,
+html[data-theme='light'] .wv-filter-control:focus {
+  border-color: #2563eb !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 14%), 0 7px 18px rgb(71 94 123 / 12%);
+}
+
+html[data-theme='light'] .wv-filter-select,
+html[data-theme='light'] .wv-filter-control option {
+  color: #111827 !important;
+}
+
+html[data-theme='light'] .wv-filter-select {
+  background-image: linear-gradient(45deg, transparent 50%, #475569 50%), linear-gradient(135deg, #475569 50%, transparent 50%);
+}
+
+html[data-theme='light'] .wv-filter-control option {
+  background: #ffffff;
+}
+
+/* Gráfico e coluna selecionada da tela de medições. */
+.wv-measurement-chart {
+  background: rgb(15 23 42 / 50%);
+}
+
+html[data-theme='light'] .wv-measurement-chart {
+  background: #ffffff !important;
+  border-color: #cbd8e7 !important;
+  box-shadow: 0 8px 24px rgb(71 94 123 / 8%);
+}
+
+html[data-theme='light'] .wv-active-column-header {
+  background: #1e4f91 !important;
+  color: #ffffff !important;
+  border-bottom-color: #173d70 !important;
+}
+
+html[data-theme='light'] .wv-active-column-cell {
+  background-color: #e5efff !important;
+  color: #111827 !important;
+}
+
+.wv-dashboard-chart {
+  background: rgb(15 23 42 / 60%);
+}
+
+.wv-chart-period {
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+html[data-theme='light'] .wv-dashboard-chart {
+  background: #ffffff !important;
+  border-color: #cbd8e7 !important;
+  box-shadow: 0 8px 24px rgb(71 94 123 / 8%);
+}
+
+html[data-theme='light'] .wv-chart-period {
+  border-color: #cbd8e7 !important;
+  background: #f8fbff !important;
+  color: #475569 !important;
 }
 
 html[data-theme='light'] .theme-login-panel [class*='text-white'],

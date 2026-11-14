@@ -1,4 +1,3 @@
-import React from 'react';
 import { Target } from 'lucide-react';
 
 export default function FiltrosMedicao({
@@ -27,7 +26,7 @@ export default function FiltrosMedicao({
   }
 
   const estiloSelect =
-    'min-w-0 max-w-full cursor-pointer appearance-none rounded-xl border border-[#1D2C42] bg-[#101827] px-3 py-2.5 text-xs text-[#C0C5C8] outline-none transition hover:border-[#34517A] focus:border-[#5A8F97]';
+    'wv-filter-control min-w-0 max-w-full cursor-pointer appearance-none px-3 text-xs outline-none';
 
   const estiloLabel = 'text-[#65758B]';
 
@@ -39,7 +38,7 @@ export default function FiltrosMedicao({
           <label className={`${estiloSelect} flex min-w-0 items-center gap-1.5`}>
             <span className={estiloLabel}>Local:</span>
             <select
-              className="w-full min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
+              className="wv-filter-select w-full min-w-0 flex-1 bg-transparent outline-none"
               value={valores.local}
               onChange={(e) => atualizar('local', e.target.value)}
             >
@@ -54,7 +53,7 @@ export default function FiltrosMedicao({
           <label className={`${estiloSelect} flex min-w-0 items-center gap-1.5`}>
             <span className={estiloLabel}>Setor:</span>
             <select
-              className="w-full min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
+              className="wv-filter-select w-full min-w-0 flex-1 bg-transparent outline-none"
               value={valores.setor}
               onChange={(e) => atualizar('setor', e.target.value)}
             >
@@ -69,7 +68,7 @@ export default function FiltrosMedicao({
           <label className={`${estiloSelect} col-span-2 flex min-w-0 items-center gap-1.5 sm:col-span-1`}>
             <span className={estiloLabel}>Equipamento:</span>
             <select
-              className="w-full min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
+              className="wv-filter-select w-full min-w-0 flex-1 bg-transparent outline-none"
               value={valores.equipamento}
               onChange={(e) => atualizar('equipamento', e.target.value)}
             >
@@ -89,7 +88,7 @@ export default function FiltrosMedicao({
           <label className={`${estiloSelect} flex min-w-0 items-center gap-1.5`}>
             <span className={estiloLabel}>Período:</span>
             <select
-              className="w-full min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
+              className="wv-filter-select w-full min-w-0 flex-1 bg-transparent outline-none"
               value={valores.periodo}
               onChange={(e) => atualizar('periodo', e.target.value)}
             >
@@ -106,7 +105,7 @@ export default function FiltrosMedicao({
           <label className={`${estiloSelect} flex min-w-0 items-center gap-1.5`}>
             <span className={estiloLabel}>Grandeza:</span>
             <select
-              className="w-full min-w-0 flex-1 bg-transparent text-[#C0C5C8] outline-none"
+              className="wv-filter-select w-full min-w-0 flex-1 bg-transparent outline-none"
               value={valores.grandeza}
               onChange={(e) => atualizar('grandeza', e.target.value)}
             >

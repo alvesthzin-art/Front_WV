@@ -43,8 +43,9 @@ const NOME_FP = 'Fator de potência';
 const LIMITES = {
   [NOME_TENSAO]: { min: 198, max: 242, texto: '198 a 242 V' },
   'Frequência (Hz)': { min: 59.9, max: 60.1, texto: '59,9 a 60,1 Hz' },
-  [NOME_FP]: { min: 0.92, texto: 'mínimo 0,92' },
+  [NOME_FP]: { min: 0.92, texto: 'acima de 0,92' },
 };
+const NOMES_ABREV = { [NOME_TENSAO]: 'Tensão', 'Frequência (Hz)': 'Freq.', [NOME_FP]: 'FP' };
 
 /* ================================================================== */
 /* Helpers                                                             */
@@ -89,14 +90,16 @@ function prepararPontos(registros, metricas, obterValor, converterData) {
 
   // Consumo = soma dos deltas positivos do medidor acumulado (tolera reset do medidor).
   let anterior = null;
+  let quedas = 0;
   pontos.forEach((p) => {
     const e = p.v[NOME_CONSUMO];
     if (e == null) return;
     if (anterior != null && e >= anterior) p.delta = e - anterior;
+    if (anterior != null && e < anterior) quedas += 1;
     anterior = e;
   });
 
-  return pontos;
+  return { pontos, quedas };
 }
 
 const FORMATOS = {
@@ -164,6 +167,7 @@ function estatisticas(pontos, nome) {
 }
 
 function tendencia(pontos, nome) {
+  if (pontos.length < 2 || pontos.at(-1).data - pontos[0].data < 24 * 3600e3) return null;
   const v = pontos.map((p) => p.v[nome]).filter((x) => x != null);
   if (v.length < 4) return null;
   const meio = Math.floor(v.length / 2);
@@ -223,8 +227,8 @@ function resumirGrupos(grupos) {
     const frq = estatisticas(g.pontos, 'Frequência (Hz)');
     const fp = estatisticas(g.pontos, NOME_FP);
     const alertas = contarAlertas(g.pontos)
-      .map((a) => `${nomeCurto(a.nome)}: ${a.fora}/${a.total} fora da faixa`)
-      .join('; ');
+      .map((a) => `${NOMES_ABREV[a.nome] || nomeCurto(a.nome)} ${a.fora}/${a.total}`)
+      .join(' · ');
 
     return {
       rotulo: g.rotulo,
@@ -243,7 +247,7 @@ function resumirGrupos(grupos) {
         cor ? fmt(cor.media, 1) : '-',
         frq ? fmt(frq.media, 2) : '-',
         fp ? fmt(fp.media, 3) : '-',
-        alertas || 'Sem alertas',
+        alertas || 'Tudo normal',
       ],
     };
   });
@@ -253,7 +257,7 @@ function resumirGrupos(grupos) {
 /* Textos                                                              */
 /* ================================================================== */
 
-function montarResumoExecutivo(pontos, linhasGrupo, formato, custoKwh) {
+function montarResumoExecutivo(pontos, linhasGrupo, formato, custoKwh, quedas = 0) {
   const consumo = somaConsumo(pontos);
   const resumo = [
     `Entre ${dataHora(pontos[0].data)} e ${dataHora(pontos.at(-1).data)} foram registradas ${pontos.length} leituras (resumo por ${formato.titulo}).`,
@@ -273,25 +277,29 @@ function montarResumoExecutivo(pontos, linhasGrupo, formato, custoKwh) {
   }
 
   const alertas = contarAlertas(pontos).map((a) => (
-    `${nomeCurto(a.nome)}: ${a.fora} de ${a.total} leituras (${fmt((a.fora / a.total) * 100, 0)}%) fora da faixa de ${LIMITES[a.nome].texto}.`
+    `${nomeCurto(a.nome)} fora do normal em ${fmt((a.fora / a.total) * 100, 0)}% das leituras (${a.fora} de ${a.total}). Faixa normal: ${LIMITES[a.nome].texto}.`
   ));
+  if (quedas) {
+    alertas.push(`A leitura do medidor voltou para trás ${quedas} vez(es) (reinício do medidor). O consumo considera só os aumentos de leitura.`);
+  }
 
   return { resumo, alertas };
 }
 
-function interpretarMetrica(m, pontos, est, custoKwh) {
+function interpretarMetrica(m, pontos, est, custoKwh, quedas = 0) {
   if (m.nome === NOME_CONSUMO) {
     const total = somaConsumo(pontos);
-    return `O medidor passou de ${fmt(est.inicial, 3)} para ${fmt(est.ultimo, 3)} kWh. Consumo de ${fmt(total, 3)} kWh no período, custo estimado de R$ ${fmt(total * custoKwh, 2)}.`;
+    const base = `Leitura do medidor: ${fmt(est.inicial, 3)} kWh no início e ${fmt(est.ultimo, 3)} kWh no fim. Consumo de ${fmt(total, 3)} kWh, custo estimado de R$ ${fmt(total * custoKwh, 2)}.`;
+    return quedas ? `${base} O medidor reiniciou ${quedas}x; por isso o consumo soma só os aumentos de leitura.` : base;
   }
-  const partes = [`Variou de ${comUnidade(est.min, m)} a ${comUnidade(est.max, m)} (amplitude de ${fmt(est.max - est.min, casasMetrica(m))}).`];
+  const partes = [`Variou de ${comUnidade(est.min, m)} a ${comUnidade(est.max, m)}.`];
   const t = tendencia(pontos, m.nome);
   if (t) partes.push(`Tendência: ${t.texto}.`);
   if (LIMITES[m.nome]) {
     const { fora, total } = contarForaDaFaixa(pontos, m.nome);
     partes.push(fora
-      ? `${fora} de ${total} leituras (${fmt((fora / total) * 100, 0)}%) fora da faixa adequada.`
-      : 'Todas as leituras dentro da faixa adequada.');
+      ? `${fora} de ${total} leituras (${fmt((fora / total) * 100, 0)}%) fora do normal (${LIMITES[m.nome].texto}).`
+      : 'Todas as leituras dentro do normal.');
   }
   return partes.join(' ');
 }
@@ -318,18 +326,45 @@ function caixaArredondada(ctx, x, y, w, h, r) {
   else ctx.rect(x, y, w, h);
 }
 
-// Faixa adequada, linha de média, marcadores de mín/máx e rótulos de barras.
+function desenharLegenda(ctx, itens) {
+  let cx = 0;
+  ctx.font = '20px Helvetica, Arial, sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  itens.forEach((item) => {
+    if (item.tipo === 'linha') {
+      ctx.setLineDash([6, 6]);
+      ctx.strokeStyle = item.cor;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(item.x + cx, 22);
+      ctx.lineTo(item.x + cx + 34, 22);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      cx += 44;
+    } else {
+      ctx.fillStyle = item.cor;
+      ctx.fillRect(item.x + cx, 13, 26, 18);
+      cx += 36;
+    }
+    ctx.fillStyle = '#334155';
+    ctx.fillText(item.texto, item.x + cx, 22);
+    cx += ctx.measureText(item.texto).width + 40;
+  });
+}
+
+// Faixa normal, linha de média, marcadores de mín/máx, legenda e rótulos de barras.
 const decoracoes = {
   id: 'decoracoes',
   beforeDatasetsDraw(chart, _args, o) {
     if (!o?.faixa) return;
     const { ctx, chartArea: a, scales: { y } } = chart;
-    const { min, max, texto } = o.faixa;
+    const { min, max } = o.faixa;
     const topo = Math.max(a.top, max != null ? y.getPixelForValue(max) : a.top);
     const base = Math.min(a.bottom, min != null ? y.getPixelForValue(min) : a.bottom);
 
     ctx.save();
-    ctx.fillStyle = 'rgba(16,185,129,0.09)';
+    ctx.fillStyle = 'rgba(16,185,129,0.10)';
     ctx.fillRect(a.left, topo, a.right - a.left, Math.max(base - topo, 0));
     ctx.setLineDash([10, 8]);
     ctx.strokeStyle = 'rgba(239,68,68,0.75)';
@@ -343,12 +378,6 @@ const decoracoes = {
         ctx.stroke();
       }
     });
-    ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(5,150,105,0.95)';
-    ctx.font = 'bold 20px Helvetica, Arial, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`Faixa adequada: ${texto}`, a.left + 12, topo + 8);
     ctx.restore();
   },
   afterDatasetsDraw(chart, _args, o) {
@@ -359,18 +388,13 @@ const decoracoes = {
       const py = y.getPixelForValue(o.media);
       if (py > a.top && py < a.bottom) {
         ctx.setLineDash([6, 8]);
-        ctx.strokeStyle = 'rgba(71,85,105,0.7)';
+        ctx.strokeStyle = 'rgba(71,85,105,0.75)';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(a.left, py);
         ctx.lineTo(a.right, py);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = '#475569';
-        ctx.font = '20px Helvetica, Arial, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(o.mediaTexto, a.right - 8, py - 5);
       }
     }
 
@@ -385,11 +409,21 @@ const decoracoes = {
       ctx.strokeStyle = o.cor;
       ctx.stroke();
 
-      ctx.font = 'bold 21px Helvetica, Arial, sans-serif';
-      const largura = ctx.measureText(p.rotulo).width + 24;
-      const altura = 34;
-      const bx = Math.min(Math.max(px - largura / 2, a.left), a.right - largura);
-      const by = p.tipo === 'max' ? py - altura - 14 : py + 14;
+      ctx.font = 'bold 20px Helvetica, Arial, sans-serif';
+      const largura = ctx.measureText(p.rotulo).width + 22;
+      const altura = 32;
+      let bx;
+      let by;
+      if (p.tipo === 'max') {
+        // acima do ponto, abaixo da legenda
+        bx = Math.min(Math.max(px - largura / 2, a.left), a.right - largura);
+        by = Math.max(py - altura - 14, 40);
+      } else {
+        // ao lado do ponto, sempre dentro da área do gráfico
+        bx = px + 16 + largura <= a.right ? px + 16 : px - 16 - largura;
+        bx = Math.max(a.left, bx);
+        by = Math.min(Math.max(py - altura / 2, a.top), a.bottom - altura);
+      }
       ctx.fillStyle = '#0f172a';
       caixaArredondada(ctx, bx, by, largura, altura, 8);
       ctx.fill();
@@ -398,6 +432,8 @@ const decoracoes = {
       ctx.textBaseline = 'middle';
       ctx.fillText(p.rotulo, bx + largura / 2, by + altura / 2 + 1);
     });
+
+    if (o?.legenda?.length) desenharLegenda(ctx, o.legenda.map((i) => ({ ...i, x: a.left })));
 
     if (o?.rotulosBarras) {
       const meta = chart.getDatasetMeta(0);
@@ -443,6 +479,33 @@ const gradiente = (cor, forte = 0.32) => (ctx) => {
   return g;
 };
 
+function casasDoPasso(passo) {
+  const texto = Number(passo.toFixed(6)).toString();
+  const i = texto.indexOf('.');
+  return i === -1 ? 0 : texto.length - i - 1;
+}
+
+// Escolhe limites e passo "redondos" para o eixo Y (ex.: 0, 2, 4, 6, 8).
+function eixoBonito(min, max, { piso, teto } = {}) {
+  if (piso != null) min = Math.max(min, piso);
+  const faixa = max - min || 1;
+  const base = 10 ** Math.floor(Math.log10(faixa / 5));
+  const candidatos = [1, 2, 2.5, 5, 10, 20, 25, 50, 100].map((f) => f * base);
+  let passo = candidatos.at(-1);
+  for (const c of candidatos) {
+    const intervalos = Math.ceil(max / c - 1e-9) - Math.floor(min / c + 1e-9);
+    if (intervalos <= 7) {
+      passo = c;
+      break;
+    }
+  }
+  let ini = Math.floor(min / passo + 1e-9) * passo;
+  let fim = Math.ceil(max / passo - 1e-9) * passo;
+  if (piso != null) ini = Math.max(ini, piso);
+  if (teto != null) fim = Math.min(fim, teto);
+  return { min: Number(ini.toFixed(6)), max: Number(fim.toFixed(6)), passo: Number(passo.toFixed(6)) };
+}
+
 function imagemLinha(m, pontos, largura, altura) {
   const completa = serieDe(pontos, m.nome);
   const est = estatisticas(pontos, m.nome);
@@ -454,19 +517,17 @@ function imagemLinha(m, pontos, largura, altura) {
   let max = est.max;
   if (lim?.min != null) min = Math.min(min, lim.min);
   if (lim?.max != null) max = Math.max(max, lim.max);
-  if (max === min) {
-    const d = Math.max(Math.abs(min) * 0.05, 0.5);
-    min -= d;
-    max += d;
-  } else {
-    const folga = (max - min) * 0.1;
-    min -= folga;
-    max += folga;
-  }
-  if (est.min >= 0 && min < 0) min = 0;
-  if (m.nome === NOME_FP && max > 1) max = 1;
+  const folga = max === min ? Math.max(Math.abs(min) * 0.05, 0.5) : (max - min) * 0.08;
+  min -= folga;
+  max += folga;
 
-  const casas = m.casas ?? casasPorFaixa(max - min);
+  const eixo = eixoBonito(min, max, {
+    piso: est.min >= 0 ? 0 : undefined,
+    teto: m.nome === NOME_FP ? 1 : undefined,
+  });
+  const casasEixo = casasDoPasso(eixo.passo);
+  const casas = casasMetrica(m);
+
   const t0 = completa[0].x;
   const t1 = completa.at(-1).x > t0 ? completa.at(-1).x : t0 + 60000;
   const span = t1 - t0;
@@ -478,6 +539,10 @@ function imagemLinha(m, pontos, largura, altura) {
     extremos.push({ ...completa.find((p) => p.y === est.min), rotulo: `mín. ${fmt(est.min, casas)}`, tipo: 'min' });
   }
 
+  const legenda = [];
+  if (lim) legenda.push({ tipo: 'caixa', cor: 'rgba(16,185,129,0.35)', texto: `faixa normal: ${lim.texto}` });
+  if (m.nome !== NOME_CONSUMO) legenda.push({ tipo: 'linha', cor: '#475569', texto: `média ${fmt(est.media, casas)}` });
+
   const fonte = { size: 22 };
   return renderizar({
     type: 'line',
@@ -488,8 +553,11 @@ function imagemLinha(m, pontos, largura, altura) {
         normalized: true,
         borderColor: m.cor,
         borderWidth: 4,
-        cubicInterpolationMode: 'monotone',
-        pointRadius: 0,
+        tension: 0,
+        pointRadius: serie.length <= 40 ? 4 : 0,
+        pointBackgroundColor: m.cor,
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
         fill: true,
         backgroundColor: gradiente(m.cor),
       }],
@@ -499,7 +567,7 @@ function imagemLinha(m, pontos, largura, altura) {
       animation: false,
       devicePixelRatio: 1,
       events: [],
-      layout: { padding: { top: 50, right: 28, bottom: 6, left: 6 } },
+      layout: { padding: { top: 64, right: 28, bottom: 6, left: 6 } },
       scales: {
         x: {
           type: 'linear',
@@ -508,24 +576,24 @@ function imagemLinha(m, pontos, largura, altura) {
           grid: { display: false },
           border: { color: '#cbd5e1', width: 2 },
           ticks: { color: '#64748b', font: fonte, padding: 10, align: 'inner', callback: rotuloX },
-          afterBuildTicks: (eixo) => {
-            eixo.ticks = Array.from({ length: 6 }, (_, i) => ({ value: t0 + (span * i) / 5 }));
+          afterBuildTicks: (eixoX) => {
+            eixoX.ticks = Array.from({ length: 6 }, (_, i) => ({ value: t0 + (span * i) / 5 }));
           },
         },
         y: {
-          min,
-          max,
+          min: eixo.min,
+          max: eixo.max,
           grid: { color: '#e2e8f0', lineWidth: 1.5 },
           border: { display: false },
-          ticks: { color: '#64748b', font: fonte, padding: 12, maxTicksLimit: 5, callback: (v) => fmt(v, casas) },
+          ticks: { color: '#64748b', font: fonte, padding: 12, stepSize: eixo.passo, callback: (v) => fmt(v, casasEixo) },
         },
       },
       plugins: {
         decoracoes: {
-          faixa: lim ? { min: lim.min, max: lim.max, texto: lim.texto } : null,
+          faixa: lim ? { min: lim.min, max: lim.max } : null,
           media: m.nome === NOME_CONSUMO ? null : est.media,
-          mediaTexto: `média ${fmt(est.media, casas)}`,
           extremos,
+          legenda,
           cor: m.cor,
         },
       },
@@ -552,7 +620,7 @@ function imagemSparkline(m, pontos, largura, altura) {
         normalized: true,
         borderColor: m.cor,
         borderWidth: 5,
-        cubicInterpolationMode: 'monotone',
+        tension: 0,
         pointRadius: 0,
         fill: true,
         backgroundColor: gradiente(m.cor, 0.28),
@@ -642,7 +710,7 @@ function titulo(doc, texto, x, y, tamanho = 11) {
   doc.setFont('helvetica', 'normal');
 }
 
-function desenharCabecalho(doc, filtros) {
+function desenharCabecalho(doc, filtros, pontos) {
   doc.setFillColor(...CORES.navy);
   doc.rect(0, 0, PAGINA.largura, 26, 'F');
   doc.setFillColor(...CORES.azul);
@@ -656,6 +724,7 @@ function desenharCabecalho(doc, filtros) {
   doc.text(`Período: ${filtros.periodo}  |  Grandezas: ${filtros.metrica}`, PAGINA.margem, 18.5);
   doc.text(`Local: ${filtros.local}  |  Setor: ${filtros.setor}`, PAGINA.margem, 23);
   doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, PAGINA.largura - PAGINA.margem, 12, { align: 'right' });
+  doc.text(`Dados de ${dataHora(pontos[0].data)} a ${dataHora(pontos.at(-1).data)}`, PAGINA.largura - PAGINA.margem, 18.5, { align: 'right' });
 }
 
 function desenharCartoes(doc, y, cartoes) {
@@ -706,7 +775,7 @@ function desenharResumoEAlertas(doc, y, resumo, alertas) {
   });
 
   const temAlerta = alertas.length > 0;
-  const linhasAlerta = temAlerta ? alertas : ['Tensão, frequência e fator de potência dentro dos limites em todas as leituras.'];
+  const linhasAlerta = temAlerta ? alertas : ['Tudo dentro do normal: tensão, frequência e fator de potência.'];
   doc.setFontSize(8.5);
   const partesAlerta = linhasAlerta.map((l) => doc.splitTextToSize(`•  ${l}`, wDir - 8));
   const alturaCaixa = 11 + partesAlerta.reduce((s, p) => s + p.length * 4 + 1.5, 0);
@@ -748,7 +817,7 @@ function desenharTile(doc, x, y, w, rotulo, valor, sub) {
 
 const ALTURA_BLOCO = 76;
 
-function desenharBlocoMetrica(doc, y, m, pontos, custoKwh) {
+function desenharBlocoMetrica(doc, y, m, pontos, custoKwh, quedas = 0) {
   const LARG_GRAFICO = 190;
   const ALT_GRAFICO = 64;
   const xPainel = PAGINA.margem + LARG_GRAFICO + 5;
@@ -789,7 +858,7 @@ function desenharBlocoMetrica(doc, y, m, pontos, custoKwh) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.6);
   doc.setTextColor(51, 65, 85);
-  const linhas = doc.splitTextToSize(interpretarMetrica(m, pontos, est, custoKwh), larguraPainel - 5).slice(0, 6);
+  const linhas = doc.splitTextToSize(interpretarMetrica(m, pontos, est, custoKwh, quedas), larguraPainel - 5).slice(0, 6);
   doc.text(linhas, xPainel + 3.5, yTexto + 3.5);
 
   return ALTURA_BLOCO;
@@ -809,7 +878,7 @@ export function exportarRelatorioPDF({
   custoKwh = 0.8,
   granularidade = 'auto', // 'auto' | 'dia' | 'hora' | 'minuto'
 }) {
-  const pontos = prepararPontos(registros, metricas, obterValor, converterData);
+  const { pontos, quedas } = prepararPontos(registros, metricas, obterValor, converterData);
   if (!pontos.length) return;
 
   const meta = (nome) => metricas.find((m) => m.nome === nome);
@@ -821,7 +890,7 @@ export function exportarRelatorioPDF({
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
   /* ---------- Página 1 ---------- */
-  desenharCabecalho(doc, filtros);
+  desenharCabecalho(doc, filtros, pontos);
 
   const spark = (nome) => (meta(nome) ? imagemSparkline(meta(nome), pontos, 440, 100) : null);
   const pot = estatisticas(pontos, NOME_POTENCIA);
@@ -865,39 +934,46 @@ export function exportarRelatorioPDF({
     },
   ]);
 
-  const { resumo, alertas } = montarResumoExecutivo(pontos, linhasGrupo, formato, custoKwh);
+  const { resumo, alertas } = montarResumoExecutivo(pontos, linhasGrupo, formato, custoKwh, quedas);
   y = desenharResumoEAlertas(doc, y + 12, resumo, alertas);
 
   /* ---------- Tabela de grandezas ---------- */
+  const temTendencia = metricas.some((m) => tendencia(pontos, m.nome));
+  const cabecalhoGrandezas = ['Grandeza', 'Média', 'Mínimo', 'Máximo', 'Último'];
+  if (temTendencia) cabecalhoGrandezas.push('Tendência');
+  cabecalhoGrandezas.push('Situação');
+
   const corpoGrandezas = metricas
     .filter((m) => m.nome !== NOME_CONSUMO)
     .map((m) => {
       const e = estatisticas(pontos, m.nome);
-      if (!e) return [nomeCurto(m.nome), '-', '-', '-', '-', '-', '-'];
-      const { fora } = contarForaDaFaixa(pontos, m.nome);
-      const t = tendencia(pontos, m.nome);
-      return [
-        nomeCurto(m.nome),
-        comUnidade(e.media, m),
-        comUnidade(e.min, m),
-        comUnidade(e.max, m),
-        comUnidade(e.ultimo, m),
-        t ? t.texto : '-',
-        LIMITES[m.nome] ? (fora ? `Atenção (${fora} fora)` : 'Normal') : '-',
-      ];
+      const linha = [nomeCurto(m.nome)];
+      if (e) linha.push(comUnidade(e.media, m), comUnidade(e.min, m), comUnidade(e.max, m), comUnidade(e.ultimo, m));
+      else linha.push('-', '-', '-', '-');
+      if (temTendencia) {
+        const t = tendencia(pontos, m.nome);
+        linha.push(t ? t.texto : '-');
+      }
+      let situacao = '-';
+      if (e && LIMITES[m.nome]) {
+        const { fora, total } = contarForaDaFaixa(pontos, m.nome);
+        situacao = fora ? `Atenção (${fmt((fora / total) * 100, 0)}% fora)` : 'Normal';
+      }
+      linha.push(situacao);
+      return linha;
     });
 
   y = garantirEspaco(doc, y, 14 + corpoGrandezas.length * 7);
   autoTable(doc, {
     startY: y,
-    head: [['Grandeza', 'Média', 'Mínimo', 'Máximo', 'Último', 'Tendência', 'Situação']],
+    head: [cabecalhoGrandezas],
     body: corpoGrandezas,
     theme: 'grid',
     headStyles: { fillColor: CORES.azul },
     styles: { fontSize: 8.5, cellPadding: 2 },
     margin: { top: TOPO_CONTEUDO, left: PAGINA.margem, right: PAGINA.margem, bottom: 16 },
     didParseCell: (d) => {
-      if (d.section === 'body' && d.column.index === 6 && String(d.cell.raw).startsWith('Atenção')) {
+      if (d.section === 'body' && d.column.index === cabecalhoGrandezas.length - 1 && String(d.cell.raw).startsWith('Atenção')) {
         d.cell.styles.textColor = CORES.alerta;
         d.cell.styles.fontStyle = 'bold';
       }
@@ -917,15 +993,15 @@ export function exportarRelatorioPDF({
   }
 
   /* ---------- Gráficos por grandeza ---------- */
-  metricasExibidas.forEach((m) => {
-    y = garantirEspaco(doc, y, ALTURA_BLOCO);
-    y += desenharBlocoMetrica(doc, y, m, pontos, custoKwh) + 4;
-  });
+  const mostrarAcumulado = linhasGrupo.length < 2 || metricasExibidas.length === 1;
+  metricasExibidas
+    .filter((m) => m.nome !== NOME_CONSUMO || mostrarAcumulado)
+    .forEach((m) => {
+      y = garantirEspaco(doc, y, ALTURA_BLOCO);
+      y += desenharBlocoMetrica(doc, y, m, pontos, custoKwh, quedas) + 4;
+    });
 
   /* ---------- Tabela por dia / hora / minuto ---------- */
-  doc.addPage();
-  titulo(doc, `Resumo por ${formato.titulo}`, PAGINA.margem, 20, 13);
-
   const destaques = [];
   if (linhasGrupo.length > 1) {
     const maiorCons = linhasGrupo.reduce((a, b) => (b.consumo > a.consumo ? b : a));
@@ -936,14 +1012,16 @@ export function exportarRelatorioPDF({
       destaques.push(`Maior pico de potência: ${fmt(pico.picoPot, 2)} kW em ${dataHora(pico.dPico)}.`);
     }
     const comAlerta = linhasGrupo.filter((l) => l.temAlerta).length;
-    destaques.push(`${comAlerta} de ${linhasGrupo.length} períodos tiveram leituras fora dos limites.`);
+    destaques.push(`${comAlerta} de ${linhasGrupo.length} períodos tiveram leituras fora do normal.`);
   } else {
     destaques.push(`Todas as leituras estão em um único ${formato.titulo}; selecione um período maior para comparar.`);
   }
 
+  y = garantirEspaco(doc, y, 30 + destaques.length * 5.6);
+  titulo(doc, `Resumo por ${formato.titulo}`, PAGINA.margem, y + 4, 13);
   doc.setFontSize(9.5);
   doc.setTextColor(51, 65, 85);
-  let yTabela = 27;
+  let yTabela = y + 11;
   destaques.forEach((d) => {
     doc.text(`•  ${d}`, PAGINA.margem + 2, yTabela);
     yTabela += 5.6;
@@ -962,7 +1040,7 @@ export function exportarRelatorioPDF({
       'Corrente méd. (A)',
       'Freq. méd. (Hz)',
       'FP médio',
-      'Alertas',
+      'Fora do normal (leituras)',
     ]],
     body: linhasGrupo.map((l) => l.celulas),
     theme: 'grid',
@@ -977,7 +1055,7 @@ export function exportarRelatorioPDF({
         const t = linhasGrupo[d.row.index].consumo / maxConsumo; // mapa de calor
         d.cell.styles.fillColor = [Math.round(255 - 64 * t), Math.round(255 - 36 * t), 254];
       }
-      if (d.column.index === 9 && d.cell.raw !== 'Sem alertas') {
+      if (d.column.index === 9 && d.cell.raw !== 'Tudo normal') {
         d.cell.styles.textColor = CORES.alerta;
       }
     },

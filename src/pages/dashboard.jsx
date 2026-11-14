@@ -175,7 +175,7 @@ function Dashboard({ onOpenAlarmes }) {
   return (
     <main className="min-h-screen p-6 text-slate-200 md:p-8 bg-transparent">
       {/* Passando os estados e setters para o componente de filtros gerenciar as opções */}
-      <div className="mb-5">
+      <div className="wv-filter-panel mb-5">
         <DashboardFilters
           filtros={filtros}
           opcoes={opcoesFiltros}

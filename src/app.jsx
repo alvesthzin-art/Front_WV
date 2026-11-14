@@ -10,6 +10,7 @@ import Relatorios from './pages/relatorios';
 import Alarmes from './pages/alarmes';
 import Conectividade from './pages/conectividade';
 import { limparSessao } from './services/session';
+import PerfilModal from './components/layout/perfilModal';
 
 const PAGINAS_BUSCA = [
   { id: 'Dashboard', label: 'Dashboard', description: 'Visão geral do sistema', keywords: ['inicio', 'painel'] },
@@ -27,6 +28,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activePage, setActivePage] = useState('Dashboard');
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch { return 'dark'; }
@@ -51,14 +53,15 @@ export default function App() {
   const pageKey = normalizar(activePage);
 
   return (
-    <div className="theme-app flex min-h-screen font-sans text-slate-100" style={{ background: 'linear-gradient(135deg, #070A15 0%, #0B132B 50%, #04060B 100%)' }}>
+    <div className="theme-app flex min-h-screen font-sans text-slate-100">
       <Sidebar theme={theme} activePage={activePage} setActivePage={setActivePage}
         onLogout={() => { limparSessao(); setIsAuthenticated(false); setActivePage('Dashboard'); }}
         isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <div className="flex min-w-0 flex-1 flex-col bg-transparent">
         <Topbar activePage={activePage} pages={PAGINAS_BUSCA}
-          onOpenSettings={() => setShowConfigModal(true)} onNavigate={navegarPelaBusca} />
+          onOpenSettings={() => setShowConfigModal(true)} onOpenProfile={() => setShowProfileModal(true)} onNavigate={navegarPelaBusca} />
         {showConfigModal && <ConfiguracoesSistemaModal theme={theme} onThemeChange={setTheme} onClose={() => setShowConfigModal(false)} />}
+        {showProfileModal && <PerfilModal onClose={() => setShowProfileModal(false)} />}
         <main className="flex-1 bg-transparent">
           {pageKey === 'dashboard' ? <Dashboard onOpenAlarmes={() => setActivePage('Alarmes')} />
           : pageKey === 'medicoes' ? <Medicao />

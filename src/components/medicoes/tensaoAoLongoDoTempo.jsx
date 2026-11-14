@@ -63,6 +63,8 @@ export default function TensaoAoLongoDoTempo({
 }) {
   const configuracao =
     CONFIGURACAO[grandeza] || CONFIGURACAO.Tensão;
+  const temaClaro =
+    document.documentElement.dataset.theme === 'light';
 
   const dadosGrafico = useMemo(() => {
     return dados
@@ -126,7 +128,7 @@ export default function TensaoAoLongoDoTempo({
   };
 
   return (
-    <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4">
+    <div className="wv-measurement-chart rounded-xl border border-slate-700/60 bg-slate-900/50 p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold text-slate-100">
@@ -163,7 +165,7 @@ export default function TensaoAoLongoDoTempo({
               }}
             >
               <CartesianGrid
-                stroke="#334155"
+                stroke={temaClaro ? '#cbd5e1' : '#334155'}
                 strokeDasharray="3 3"
                 vertical={false}
               />
@@ -174,16 +176,22 @@ export default function TensaoAoLongoDoTempo({
                 scale="time"
                 domain={['dataMin', 'dataMax']}
                 tickFormatter={formatarHorario}
-                stroke="#94a3b8"
-                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                stroke={temaClaro ? '#64748b' : '#94a3b8'}
+                tick={{
+                  fontSize: 10,
+                  fill: temaClaro ? '#475569' : '#94a3b8',
+                }}
                 minTickGap={35}
               />
 
               <YAxis
                 type="number"
                 domain={escalaY}
-                stroke="#94a3b8"
-                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                stroke={temaClaro ? '#64748b' : '#94a3b8'}
+                tick={{
+                  fontSize: 10,
+                  fill: temaClaro ? '#475569' : '#94a3b8',
+                }}
                 width={55}
                 tickFormatter={(valor) => Number(valor).toFixed(1)}
               />
@@ -195,10 +203,10 @@ export default function TensaoAoLongoDoTempo({
                   grandeza,
                 ]}
                 contentStyle={{
-                  backgroundColor: '#0f172a',
-                  border: '1px solid #334155',
+                  backgroundColor: temaClaro ? '#ffffff' : '#0f172a',
+                  border: `1px solid ${temaClaro ? '#cbd5e1' : '#334155'}`,
                   borderRadius: '8px',
-                  color: '#f8fafc',
+                  color: temaClaro ? '#111827' : '#f8fafc',
                 }}
               />
 

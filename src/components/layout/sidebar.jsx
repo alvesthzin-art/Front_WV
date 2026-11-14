@@ -21,7 +21,7 @@ const menuItems = [
 export function Sidebar({ theme = 'dark', activePage, setActivePage, onLogout, isOpen, setIsOpen }) {
   return (
     <aside 
-      className={`bg-slate-950/60 backdrop-blur-md text-slate-300 min-h-screen flex flex-col justify-between p-4 border-r border-slate-800/60 transition-all duration-300 ${
+      className={`wv-sidebar text-slate-300 min-h-screen flex flex-col justify-between p-4 border-r transition-all duration-300 ${
         isOpen ? 'w-64' : 'w-20'
       }`}
     >

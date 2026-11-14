@@ -30,6 +30,7 @@ function reduzirPontos(pontos) {
 
 export default function SystemPerformance({ dados = [], grandeza = 'Tensão', periodo = 'Hoje' }) {
   const metricAtual = CONFIGURACAO_GRANDEZA[grandeza] ?? CONFIGURACAO_GRANDEZA.Tensão;
+  const temaClaro = document.documentElement.dataset.theme === 'light';
 
   const chartDataCompleto = dados.map((item) => {
     const chave = metricAtual.keys.find((key) => item[key] !== undefined && item[key] !== null);
@@ -51,7 +52,7 @@ export default function SystemPerformance({ dados = [], grandeza = 'Tensão', pe
   const dominioY = [menorValor - margem, maiorValor + margem];
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg backdrop-blur-sm">
+    <div className="wv-dashboard-chart rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg backdrop-blur-sm">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-bold text-slate-100">{metricAtual.label} ao longo do período selecionado</h3>
@@ -59,7 +60,7 @@ export default function SystemPerformance({ dados = [], grandeza = 'Tensão', pe
             Desempenho do Sistema
           </p>
         </div>
-        <span className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-1.5 text-xs font-semibold text-slate-400">
+        <span className="wv-chart-period rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-1.5 text-xs font-semibold text-slate-400">
           {periodo}
         </span>
       </div>
@@ -78,10 +79,10 @@ export default function SystemPerformance({ dados = [], grandeza = 'Tensão', pe
                   <stop offset="95%" stopColor={metricAtual.color} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={temaClaro ? '#cbd5e1' : '#1e293b'} vertical={false} />
               <XAxis
                 dataKey="time"
-                stroke="#64748b"
+                stroke={temaClaro ? '#64748b' : '#64748b'}
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
@@ -91,15 +92,15 @@ export default function SystemPerformance({ dados = [], grandeza = 'Tensão', pe
               />
               <YAxis
                 domain={dominioY}
-                stroke="#64748b"
+                stroke={temaClaro ? '#64748b' : '#64748b'}
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(valor) => Number(valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                label={{ value: metricAtual.unit, angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 11 }}
+                label={{ value: metricAtual.unit, angle: -90, position: 'insideLeft', fill: temaClaro ? '#475569' : '#64748b', fontSize: 11 }}
               />
               <Tooltip
-                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc', fontSize: '12px' }}
+                contentStyle={{ backgroundColor: temaClaro ? '#ffffff' : '#0f172a', borderColor: temaClaro ? '#cbd5e1' : '#334155', borderRadius: '12px', color: temaClaro ? '#111827' : '#f8fafc', fontSize: '12px' }}
                 formatter={(valor) => [`${Number(valor).toLocaleString('pt-BR')} ${metricAtual.unit}`, metricAtual.label]}
                 labelFormatter={(label) => `Horário: ${label}`}
               />

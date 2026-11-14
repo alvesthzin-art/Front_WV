@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { X } from 'lucide-react';
 
 const ITENS_POR_PAGINA = 10;
@@ -66,13 +66,6 @@ export default function DadosBrutosModal({
     inicio + ITENS_POR_PAGINA
   );
 
-  // Corrige a página atual caso o total de páginas diminua.
-  useEffect(() => {
-    if (paginaAtual > totalPaginas) {
-      setPaginaAtual(totalPaginas);
-    }
-  }, [paginaAtual, totalPaginas]);
-
   function mudarPagina(numero) {
     setPaginaAtual(
       Math.max(1, Math.min(numero, totalPaginas))
@@ -129,7 +122,7 @@ export default function DadosBrutosModal({
                     key={coluna.id}
                     className={`whitespace-nowrap px-5 py-3.5 font-medium transition-colors ${
                       eColunaAtiva
-                        ? 'bg-gradient-to-b from-[#183152] via-[#12243F] to-[#0E1A2E] font-semibold text-[#4B8BE8]'
+                        ? 'wv-active-column-header bg-gradient-to-b from-[#183152] via-[#12243F] to-[#0E1A2E] font-semibold text-[#4B8BE8]'
                         : ''
                     }`}
                   >
@@ -188,7 +181,7 @@ export default function DadosBrutosModal({
                           }
                           className={`whitespace-nowrap px-5 py-3.5 transition-colors ${
                             eColunaAtiva
-                              ? 'font-semibold text-slate-100'
+                              ? 'wv-active-column-cell font-semibold text-slate-100'
                               : ['data', 'hora'].includes(coluna.id)
                                 ? 'text-slate-400'
                                 : 'text-slate-300'

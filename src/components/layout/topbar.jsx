@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Settings, ChevronRight, LayoutDashboard, FileBarChart, History, Cpu, MapPin, Layers, Bell, Zap, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Search, Settings, ChevronRight, LayoutDashboard, FileBarChart, Cpu, MapPin, Layers, Bell, Zap, SlidersHorizontal } from 'lucide-react';
 
 const normalizar = (valor) => String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
@@ -58,7 +58,6 @@ export function Topbar({ activePage, onOpenSettings, onOpenProfile, onNavigate, 
     }).slice(0, 12);
   }, [busca, itens]);
 
-  useEffect(() => { setIndiceAtivo(0); }, [busca]);
   useEffect(() => {
     const fechar = (evento) => { if (raiz.current && !raiz.current.contains(evento.target)) setAberta(false); };
     document.addEventListener('pointerdown', fechar);
@@ -83,7 +82,7 @@ export function Topbar({ activePage, onOpenSettings, onOpenProfile, onNavigate, 
       // Sem função de navegação, não fingir que o item foi aberto.
       return;
     }
-    setBusca(''); setAberta(false); campo.current?.blur();
+    setBusca(''); setAberta(false);
   };
 
   const teclado = (evento) => {
@@ -95,16 +94,16 @@ export function Topbar({ activePage, onOpenSettings, onOpenProfile, onNavigate, 
   };
 
   return (
-    <header className="relative z-30 flex min-h-[72px] shrink-0 items-center justify-between gap-3 border-b border-[#1D2B40] bg-[#080E1C]/95 px-4 py-3 backdrop-blur-md md:px-6">
+    <header className="wv-topbar relative z-30 flex min-h-[84px] shrink-0 items-center justify-between gap-4 px-5 py-4 md:px-7">
       <div className="min-w-0">
-        <h1 className="truncate text-lg font-bold tracking-tight text-[#E5EAF2] md:text-xl">{activePage}</h1>
-        <p className="mt-0.5 hidden text-[11px] text-[#8794A8] sm:block">Visão geral do sistema</p>
+        <h1 className="truncate text-2xl font-bold tracking-tight text-[#E5EAF2] md:text-3xl">{activePage}</h1>
+        <p className="mt-1 hidden text-xs text-[#8794A8] sm:block">Visão geral do sistema</p>
       </div>
-      <div className="flex min-w-0 items-center gap-2.5">
-        <div ref={raiz} className="relative w-36 sm:w-60 lg:w-80">
-          <div className={`flex h-10 items-center gap-2 rounded-xl border bg-[#0C141F] px-3 transition-all ${aberta ? 'border-[#3B82F6] shadow-[0_0_0_3px_rgba(59,130,246,0.08)]' : 'border-[#263448] hover:border-[#365172]'}`}>
-            <Search size={16} className="shrink-0 text-[#8BA4C8]" />
-            <input ref={campo} type="search" value={busca} onChange={e => { setBusca(e.target.value); setAberta(true); }} onFocus={() => setAberta(true)} onKeyDown={teclado} placeholder="Buscar no sistema..." aria-label="Buscar no sistema" role="combobox" aria-autocomplete="list" aria-expanded={aberta && !!busca.trim()} aria-controls="wattvision-resultados" className="w-full min-w-0 appearance-none bg-transparent text-xs text-slate-100 outline-none placeholder:text-[#67758A] [&::-webkit-search-cancel-button]:hidden" />
+      <div className="flex min-w-0 items-center gap-3">
+        <div ref={raiz} className="relative w-44 sm:w-72 lg:w-[360px]">
+          <div className={`wv-search-shell flex h-12 items-center gap-2.5 rounded-xl border px-4 transition-all ${aberta ? 'border-[#3B82F6] shadow-[0_0_0_3px_rgba(59,130,246,0.08)]' : 'border-[#263448] hover:border-[#365172]'}`}>
+            <Search size={18} className="shrink-0 text-[#8BA4C8]" />
+            <input ref={campo} type="search" value={busca} onChange={e => { setBusca(e.target.value); setIndiceAtivo(0); setAberta(true); }} onFocus={() => setAberta(true)} onKeyDown={teclado} placeholder="Buscar no sistema..." aria-label="Buscar no sistema" role="combobox" aria-autocomplete="list" aria-expanded={aberta && !!busca.trim()} aria-controls="wattvision-resultados" className="w-full min-w-0 appearance-none bg-transparent text-sm text-slate-100 outline-none placeholder:text-[#67758A] [&::-webkit-search-cancel-button]:hidden" />
           </div>
           {aberta && busca.trim() && (
             <div id="wattvision-resultados" role="listbox" className="absolute right-0 top-[calc(100%+9px)] z-50 max-h-[360px] w-[min(90vw,390px)] overflow-y-auto rounded-xl border border-[#2B3D56] bg-[#101A2A] p-2 shadow-2xl shadow-black/50">
@@ -122,11 +121,11 @@ export function Topbar({ activePage, onOpenSettings, onOpenProfile, onNavigate, 
             </div>
           )}
         </div>
-        <button type="button" aria-label="Configurações" title="Configurações" onClick={onOpenSettings} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#263448] bg-[#0C141F] text-[#9EACC0] transition-colors hover:border-[#3B82F6]/60 hover:bg-[#17253A] hover:text-blue-300"><Settings size={17}/></button>
+        <button type="button" aria-label="Configurações" title="Configurações" onClick={onOpenSettings} className="wv-topbar-button flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border text-[#9EACC0] transition-colors"><Settings size={20}/></button>
         {onOpenProfile ? (
-          <button type="button" onClick={onOpenProfile} aria-label="Abrir perfil" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-blue-400/30 bg-gradient-to-br from-[#2C57A8] to-[#0B121E] text-xs font-bold text-white">WV</button>
+          <button type="button" onClick={onOpenProfile} aria-label="Abrir perfil" className="wv-profile-button flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-sm font-bold text-white">WV</button>
         ) : (
-          <span aria-label="Watt Vision" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-blue-400/30 bg-gradient-to-br from-[#2C57A8] to-[#0B121E] text-xs font-bold text-white">WV</span>
+          <span aria-label="Watt Vision" className="wv-profile-button flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-sm font-bold text-white">WV</span>
         )}
       </div>
     </header>
