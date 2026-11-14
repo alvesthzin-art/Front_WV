@@ -16,7 +16,7 @@ export function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-slate-950 font-sans text-slate-100">
+    <div className="theme-login min-h-screen w-full flex bg-slate-950 font-sans text-slate-100">
       {/* Lado Esquerdo - Banner Industrial */}
       <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden flex-col justify-between p-12">
         {/* Imagem de Fundo */}
@@ -50,7 +50,7 @@ export function Login({ onLoginSuccess }) {
       </div>
 
       {/* Lado Direito - Formulário de Login */}
-      <div className="w-full lg:w-2/5 flex flex-col justify-between p-8 sm:p-12 bg-slate-950 border-l border-slate-900">
+      <div className="theme-login-panel w-full lg:w-2/5 flex flex-col justify-between p-8 sm:p-12 bg-slate-950 border-l border-slate-900">
         <div></div>
 
         <div className="w-full max-w-md mx-auto space-y-8">
@@ -59,11 +59,10 @@ export function Login({ onLoginSuccess }) {
           {/* Logo Watt Vision (Substituído o ícone pela imagem logoWV) */}
           <div className="flex flex-col items-center text-center">
             <div className="flex items-center gap-2 mb-2">
-              <img 
-                src={logoWV} 
-                alt="Logo Watt Vision" 
-                className="w-50 h-50 object-contain" 
-              />
+              <div className="theme-login-logo-wrap relative h-50 w-50">
+                <img src={logoWV} alt="Logo Watt Vision" className="theme-login-logo h-50 w-50 object-contain" />
+                <span className="theme-login-logo-label absolute bottom-[18%] left-0 right-0 text-center text-[15px] font-black tracking-[-0.05em]">WATT VISION</span>
+              </div>
             </div>
           </div>
 

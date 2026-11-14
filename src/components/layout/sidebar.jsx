@@ -1,11 +1,9 @@
-import React from 'react';
 import { 
   LayoutDashboard, 
   Cpu, 
   Activity, 
   BellRing, 
   Wifi, 
-  Settings, 
   FileText, 
   LogOut
 } from 'lucide-react';
@@ -20,7 +18,7 @@ const menuItems = [
   { name: 'Relatórios', icon: FileText, path: '/relatorios' },
 ];
 
-export function Sidebar({ activePage, setActivePage, onLogout, isOpen, setIsOpen }) {
+export function Sidebar({ theme = 'dark', activePage, setActivePage, onLogout, isOpen, setIsOpen }) {
   return (
     <aside 
       className={`bg-slate-950/60 backdrop-blur-md text-slate-300 min-h-screen flex flex-col justify-between p-4 border-r border-slate-800/60 transition-all duration-300 ${
@@ -36,13 +34,20 @@ export function Sidebar({ activePage, setActivePage, onLogout, isOpen, setIsOpen
             isOpen ? 'justify-start gap-3 px-2' : 'justify-center px-0'
           }`}
         >
-          <img 
-            src={logoWV} 
-            alt="Logo Watt Vision" 
-            className={`object-contain transition-transform group-hover:scale-105 ${
-              isOpen ? 'w-30 h-30' : 'w-15 h-15'
-            }`} 
-          />
+          <div className={`relative flex items-center justify-center ${isOpen ? 'h-30 w-30' : 'h-15 w-15'}`}>
+            <img
+              src={logoWV}
+              alt="Logo Watt Vision"
+              className={`object-contain transition-transform group-hover:scale-105 ${theme === 'light' ? 'theme-logo-light' : ''} ${
+                isOpen ? 'h-30 w-30' : 'h-15 w-15'
+              }`}
+            />
+            {theme === 'light' && (
+              <span className="theme-logo-light-label absolute bottom-[6%] whitespace-nowrap text-[9px] font-black tracking-[-0.04em] text-slate-800">
+                WATT VISION
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Menu de Navegação */}

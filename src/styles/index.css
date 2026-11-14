@@ -1,1 +1,141 @@
 @import "tailwindcss";
+
+/* O modo claro é aplicado na raiz para também afetar telas que usam classes
+   escuras legadas. Componentes com cores de estado (azul, verde e vermelho)
+   continuam preservando sua semântica visual. */
+html[data-theme='light'] {
+  color-scheme: light;
+  background: #f3f6fb;
+}
+
+html[data-theme='light'] body,
+html[data-theme='light'] #root {
+  background: #eef3f8 !important;
+  color: #111827;
+}
+
+html[data-theme='light'] .theme-app {
+  background: linear-gradient(135deg, #f5f8fc 0%, #edf3f8 50%, #e8eff6 100%) !important;
+  color: #111827 !important;
+}
+
+html[data-theme='light'] [class*='bg-slate-950'],
+html[data-theme='light'] [class*='bg-[#0'],
+html[data-theme='light'] [class*='bg-[#1'] {
+  background-color: #f8fbff !important;
+  background-image: none !important;
+}
+
+html[data-theme='light'] [class*='border-slate-8'],
+html[data-theme='light'] [class*='border-[#'] {
+  border-color: #d7e0eb !important;
+}
+
+html[data-theme='light'] [class*='text-slate-100'],
+html[data-theme='light'] [class*='text-slate-200'],
+html[data-theme='light'] [class*='text-slate-300'],
+html[data-theme='light'] [class*='text-[#C'],
+html[data-theme='light'] [class*='text-[#D'],
+html[data-theme='light'] [class*='text-[#E'] {
+  color: #1e293b !important;
+}
+
+html[data-theme='light'] [class*='text-slate-400'],
+html[data-theme='light'] [class*='text-slate-500'],
+html[data-theme='light'] [class*='text-[#6'],
+html[data-theme='light'] [class*='text-[#7'],
+html[data-theme='light'] [class*='text-[#8'],
+html[data-theme='light'] [class*='text-[#9'] {
+  color: #64748b !important;
+}
+
+html[data-theme='light'] .theme-app [class*='text-[#'] {
+  color: #111827 !important;
+}
+
+html[data-theme='light'] .theme-app [class*='text-slate-'],
+html[data-theme='light'] .theme-app [class*='text-gray-'] {
+  color: #111827 !important;
+}
+
+/* Números e informações que ainda usam text-white no tema escuro. */
+html[data-theme='light'] .theme-app [class*='text-white'] {
+  color: #111827 !important;
+}
+
+html[data-theme='light'] .theme-app h1,
+html[data-theme='light'] .theme-app h2,
+html[data-theme='light'] .theme-app h3,
+html[data-theme='light'] .theme-app h4,
+html[data-theme='light'] .theme-app p,
+html[data-theme='light'] .theme-app label,
+html[data-theme='light'] .theme-app th,
+html[data-theme='light'] .theme-app td,
+html[data-theme='light'] .theme-app input,
+html[data-theme='light'] .theme-app select,
+html[data-theme='light'] .theme-app textarea {
+  color: #111827 !important;
+}
+
+html[data-theme='light'] .theme-app button[class*='text-white'],
+html[data-theme='light'] .theme-app button[class*='bg-blue'],
+html[data-theme='light'] .theme-app button[aria-pressed='true'] {
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-logo-light {
+  clip-path: inset(0 0 42% 0);
+}
+
+html[data-theme='light'] .theme-logo-light-label {
+  line-height: 1;
+  color: #000000 !important;
+}
+
+html[data-theme='light'] input,
+html[data-theme='light'] select,
+html[data-theme='light'] textarea {
+  color: #1e293b !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+html[data-theme='light'] input::placeholder,
+html[data-theme='light'] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='light'] button[aria-pressed='true'] {
+  background: #2563eb !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-login-panel [class*='text-white'],
+html[data-theme='light'] .theme-login-panel [class*='text-slate-'],
+html[data-theme='light'] .theme-login-panel h1,
+html[data-theme='light'] .theme-login-panel h2,
+html[data-theme='light'] .theme-login-panel h3,
+html[data-theme='light'] .theme-login-panel p,
+html[data-theme='light'] .theme-login-panel label,
+html[data-theme='light'] .theme-login-panel span {
+  color: #000000 !important;
+}
+
+html[data-theme='light'] .theme-login-panel button[class*='bg-blue'] span,
+html[data-theme='light'] .theme-login-panel button[class*='bg-blue'] svg {
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-login-logo {
+  clip-path: inset(0 0 42% 0);
+}
+
+html[data-theme='light'] .theme-login-logo-label {
+  display: block;
+  color: #000000 !important;
+}
+
+.theme-login-logo-label {
+  display: none;
+}

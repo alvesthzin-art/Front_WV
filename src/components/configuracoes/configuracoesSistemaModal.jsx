@@ -85,7 +85,7 @@ const initialSettings = {
 |
 */
 
-export function ConfiguracoesSistemaModal({ onClose }) {
+export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChange }) {
 
   /*
   | activeTab controla qual aba está aberta.
@@ -582,12 +582,7 @@ export function ConfiguracoesSistemaModal({ onClose }) {
               | 13.1.2. CARTÃO APARÊNCIA
               |--------------------------------------------------------------------------
               |
-              | Exibe o tema visual atual da interface.
-              | Nesta versão, o tema escuro é apenas informativo.
-              |
-              | Para permitir trocar o tema, será necessário criar
-              | um estado para armazenar a seleção e aplicar o tema
-              | ao restante da aplicação.
+              | Permite alternar o tema visual de toda a interface.
               |
               */}
 
@@ -610,16 +605,25 @@ export function ConfiguracoesSistemaModal({ onClose }) {
                   </div>
                 </div>
 
-                {/* Exibe o tema atualmente disponível. */}
                 <div className="p-5">
                   <label className={labelClass}>Tema</label>
 
-                  <div className="mt-2 flex items-center justify-between rounded-xl border border-[#1C2D45] bg-[#101724] px-3 py-3 text-[13px] text-[#8E98A6]">
-                    <span>Escuro</span>
-
-                    <span className="rounded-md bg-[#080D17] px-2 py-1 text-[9px] text-[#596474]">
-                      FIXO
-                    </span>
+                  <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-[#1C2D45] bg-[#101724] p-1">
+                    {[
+                      { id: 'dark', label: 'Escuro', description: 'Fundo escuro' },
+                      { id: 'light', label: 'Claro', description: 'Fundo claro' },
+                    ].map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => onThemeChange?.(option.id)}
+                        aria-pressed={theme === option.id}
+                        className={`rounded-lg border px-3 py-3 text-left transition ${theme === option.id ? 'border-[#3768C5]/60 bg-[#193564] text-white' : 'border-transparent text-[#8E98A6] hover:bg-[#172235] hover:text-white'}`}
+                      >
+                        <span className="block text-xs font-semibold">{option.label}</span>
+                        <span className="mt-1 block text-[10px] opacity-75">{option.description}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </section>

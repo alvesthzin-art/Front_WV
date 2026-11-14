@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Login } from './pages/login';
 import { Sidebar } from './components/layout/sidebar';
 import { Topbar } from './components/layout/topbar';
@@ -21,12 +21,21 @@ const PAGINAS_BUSCA = [
   { id: 'Configurações', label: 'Configurações', description: 'Preferências do sistema', keywords: ['ajustes'] },
 ];
 const normalizar = (valor) => String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const THEME_KEY = 'wattvision_theme';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activePage, setActivePage] = useState('Dashboard');
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch { return 'dark'; }
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem(THEME_KEY, theme); } catch { /* armazenamento indisponível */ }
+  }, [theme]);
 
   const navegarPelaBusca = (item) => {
     if (!item) return;
@@ -42,14 +51,14 @@ export default function App() {
   const pageKey = normalizar(activePage);
 
   return (
-    <div className="flex min-h-screen font-sans text-slate-100" style={{ background: 'linear-gradient(135deg, #070A15 0%, #0B132B 50%, #04060B 100%)' }}>
-      <Sidebar activePage={activePage} setActivePage={setActivePage}
+    <div className="theme-app flex min-h-screen font-sans text-slate-100" style={{ background: 'linear-gradient(135deg, #070A15 0%, #0B132B 50%, #04060B 100%)' }}>
+      <Sidebar theme={theme} activePage={activePage} setActivePage={setActivePage}
         onLogout={() => { limparSessao(); setIsAuthenticated(false); setActivePage('Dashboard'); }}
         isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <div className="flex min-w-0 flex-1 flex-col bg-transparent">
         <Topbar activePage={activePage} pages={PAGINAS_BUSCA}
           onOpenSettings={() => setShowConfigModal(true)} onNavigate={navegarPelaBusca} />
-        {showConfigModal && <ConfiguracoesSistemaModal onClose={() => setShowConfigModal(false)} />}
+        {showConfigModal && <ConfiguracoesSistemaModal theme={theme} onThemeChange={setTheme} onClose={() => setShowConfigModal(false)} />}
         <main className="flex-1 bg-transparent">
           {pageKey === 'dashboard' ? <Dashboard onOpenAlarmes={() => setActivePage('Alarmes')} />
           : pageKey === 'medicoes' ? <Medicao />
