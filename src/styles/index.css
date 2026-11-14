@@ -251,15 +251,6 @@ html[data-theme='light'] .theme-app button[aria-pressed='true'] {
   color: #ffffff !important;
 }
 
-html[data-theme='light'] .theme-logo-light {
-  clip-path: inset(0 0 42% 0);
-}
-
-html[data-theme='light'] .theme-logo-light-label {
-  line-height: 1;
-  color: #000000 !important;
-}
-
 html[data-theme='light'] input,
 html[data-theme='light'] select,
 html[data-theme='light'] textarea {
@@ -362,17 +353,4 @@ html[data-theme='light'] .theme-login-panel span {
 html[data-theme='light'] .theme-login-panel button[class*='bg-blue'] span,
 html[data-theme='light'] .theme-login-panel button[class*='bg-blue'] svg {
   color: #ffffff !important;
-}
-
-html[data-theme='light'] .theme-login-logo {
-  clip-path: inset(0 0 42% 0);
-}
-
-html[data-theme='light'] .theme-login-logo-label {
-  display: block;
-  color: #000000 !important;
-}
-
-.theme-login-logo-label {
-  display: none;
 }

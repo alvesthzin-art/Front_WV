@@ -49,7 +49,7 @@ export default function App() {
     console.warn('Resultado sem navegação configurada:', item);
   };
 
-  if (!isAuthenticated) return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
+  if (!isAuthenticated) return <Login theme={theme} onLoginSuccess={() => setIsAuthenticated(true)} />;
   const pageKey = normalizar(activePage);
 
   return (

@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Eye, EyeOff, Lock, ShieldCheck, Activity, Wifi, ArrowRight } from 'lucide-react';
 import loginBg from '../assets/login.png';
 import logoWV from '../assets/logoWV.png';
+import logoModoClaro from '../assets/Logo_modo_claro.jpeg';
 
-export function Login({ onLoginSuccess }) {
+export function Login({ onLoginSuccess, theme = 'dark' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,14 +19,12 @@ export function Login({ onLoginSuccess }) {
   return (
     <div className="theme-login min-h-screen w-full flex bg-slate-950 font-sans text-slate-100">
       {/* Lado Esquerdo - Banner Industrial */}
-      <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden flex-col justify-between p-12">
-        {/* Imagem de Fundo */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center z-0 scale-105"
-          style={{ backgroundImage: `url(${loginBg})` }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-slate-950/90" />
-        </div>
+      <div
+        className="theme-login-hero relative hidden overflow-hidden bg-cover bg-center lg:flex lg:w-3/5 flex-col justify-between p-12"
+        style={{
+          backgroundImage: `linear-gradient(to right, rgb(2 6 23 / 90%), rgb(2 6 23 / 75%), rgb(2 6 23 / 90%)), url(${loginBg})`,
+        }}
+      >
 
         {/* Topo do Banner - Badge de Status */}
         <div className="relative z-10">
@@ -60,8 +59,11 @@ export function Login({ onLoginSuccess }) {
           <div className="flex flex-col items-center text-center">
             <div className="flex items-center gap-2 mb-2">
               <div className="theme-login-logo-wrap relative h-50 w-50">
-                <img src={logoWV} alt="Logo Watt Vision" className="theme-login-logo h-50 w-50 object-contain" />
-                <span className="theme-login-logo-label absolute bottom-[18%] left-0 right-0 text-center text-[15px] font-black tracking-[-0.05em]">WATT VISION</span>
+                <img
+                  src={theme === 'light' ? logoModoClaro : logoWV}
+                  alt="Logo Watt Vision"
+                  className={`${theme === 'light' ? '' : 'theme-login-logo'} h-50 w-50 object-contain`}
+                />
               </div>
             </div>
           </div>

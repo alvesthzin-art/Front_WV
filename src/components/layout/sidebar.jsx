@@ -8,6 +8,7 @@ import {
   LogOut
 } from 'lucide-react';
 import logoWV from '../../assets/logoWV.png';
+import logoModoClaro from '../../assets/Logo_modo_claro.jpeg';
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
@@ -36,17 +37,12 @@ export function Sidebar({ theme = 'dark', activePage, setActivePage, onLogout, i
         >
           <div className={`relative flex items-center justify-center ${isOpen ? 'h-30 w-30' : 'h-15 w-15'}`}>
             <img
-              src={logoWV}
+              src={theme === 'light' ? logoModoClaro : logoWV}
               alt="Logo Watt Vision"
-              className={`object-contain transition-transform group-hover:scale-105 ${theme === 'light' ? 'theme-logo-light' : ''} ${
+              className={`object-contain transition-transform group-hover:scale-105 ${
                 isOpen ? 'h-30 w-30' : 'h-15 w-15'
               }`}
             />
-            {theme === 'light' && (
-              <span className="theme-logo-light-label absolute bottom-[6%] whitespace-nowrap text-[9px] font-black tracking-[-0.04em] text-slate-800">
-                WATT VISION
-              </span>
-            )}
           </div>
         </div>
 
