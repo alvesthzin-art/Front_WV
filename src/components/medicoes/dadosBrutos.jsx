@@ -217,8 +217,8 @@ export default function DadosBrutosModal({
               onClick={() => mudarPagina(num)}
               className={`h-7 w-7 rounded-lg text-xs font-medium transition-all ${
                 paginaSegura === num
-                  ? 'border border-[#2E5899] bg-[#1C3B6E] text-white shadow-sm ring-1 ring-[#3D6EB2]'
-                  : 'border border-[#141F33] bg-[#0A1220] text-[#425473] hover:border-[#213554] hover:text-slate-200'
+                  ? 'wv-pagination-active border border-[#2E5899] bg-[#1C3B6E] text-white shadow-sm ring-1 ring-[#3D6EB2]'
+                  : 'wv-pagination-inactive border border-[#141F33] bg-[#0A1220] text-[#425473] hover:border-[#213554] hover:text-slate-200'
               }`}
             >
               {num}

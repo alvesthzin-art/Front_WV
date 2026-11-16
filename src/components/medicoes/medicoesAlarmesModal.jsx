@@ -187,10 +187,10 @@ export default function MedicoesAlarmesModal({ onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="medicoes-alarmes-titulo"
-        className="flex max-h-[94vh] w-full max-w-[1200px] flex-col overflow-hidden rounded-[20px] border border-[#263448] bg-[#0C141F] text-[#C0C5C8] shadow-2xl"
+        className="wv-modal-panel flex max-h-[94vh] w-full max-w-[1200px] flex-col overflow-hidden rounded-[20px] border border-[#263448] bg-[#0C141F] text-[#C0C5C8] shadow-2xl"
       >
         {/* Cabeçalho */}
-        <header className="flex items-start justify-between border-b border-[#1D2C42] bg-gradient-to-r from-[#13213A] to-[#0C141F] px-5 py-5 sm:px-6">
+        <header className="wv-modal-header flex items-start justify-between border-b border-[#1D2C42] bg-gradient-to-r from-[#13213A] to-[#0C141F] px-5 py-5 sm:px-6">
           <div>
             <h2
               id="medicoes-alarmes-titulo"

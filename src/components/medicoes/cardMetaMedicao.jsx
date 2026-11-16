@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Target } from 'lucide-react';
 
 export default function CardMetaMedicao({
@@ -10,7 +9,7 @@ export default function CardMetaMedicao({
 }) {
   return (
     <article className="flex min-h-[126px] min-w-0 flex-col rounded-[20px] border border-[#263448] bg-[#0C141F] p-4 shadow-[0_2px_20px_0_rgba(0,0,0,0.25)]">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#263448] bg-[#101827]">
+      <div className="wv-measurement-card-icon wv-measurement-card-icon-meta flex h-9 w-9 items-center justify-center rounded-xl border border-[#263448] bg-[#101827]">
         <Target size={17} strokeWidth={1.8} className="text-[#65758B]" />
       </div>
 

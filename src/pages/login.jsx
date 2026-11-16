@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, Lock, ShieldCheck, Activity, Wifi, ArrowRight } from 'lucide-react';
 import loginBg from '../assets/login.png';
 import logoWV from '../assets/logoWV.png';
-import logoModoClaro from '../assets/Logo_modo_claro.jpeg';
+import logoModoClaro from '../assets/logo_modo_claro.png';
 
 export function Login({ onLoginSuccess, theme = 'dark' }) {
   const [email, setEmail] = useState('');

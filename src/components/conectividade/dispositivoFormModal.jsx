@@ -375,7 +375,7 @@ function DispositivoFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-      <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-[#0C141F] border border-[#17315F] shadow-2xl">
+      <div className="wv-modal-panel w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-[#0C141F] border border-[#17315F] shadow-2xl">
         <div className="flex items-start justify-between p-6 border-b border-[#17315F]/40">
           <div>
             <h2 className="text-lg font-bold text-white">

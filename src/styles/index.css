@@ -270,6 +270,335 @@ html[data-theme='light'] button[aria-pressed='true'] {
   color: #ffffff !important;
 }
 
+/* Ícones com contraste adequado sobre superfícies claras. */
+html[data-theme='light'] .theme-app svg {
+  color: #1d4ed8;
+}
+
+html[data-theme='light'] .theme-app svg[class*='text-emerald'],
+html[data-theme='light'] .theme-app svg[class*='text-green'] {
+  color: #15803d;
+}
+
+html[data-theme='light'] .theme-app svg[class*='text-red'] {
+  color: #b91c1c;
+}
+
+html[data-theme='light'] .theme-app svg[class*='text-yellow'],
+html[data-theme='light'] .theme-app svg[class*='text-amber'] {
+  color: #a16207;
+}
+
+html[data-theme='light'] .theme-app svg[class*='text-teal'],
+html[data-theme='light'] .theme-app svg[class*='text-cyan'] {
+  color: #0f766e;
+}
+
+html[data-theme='light'] .theme-app button[class*='text-white'] svg,
+html[data-theme='light'] .theme-app button[class*='bg-blue'] svg,
+html[data-theme='light'] .theme-app button[aria-pressed='true'] svg {
+  color: #ffffff;
+}
+
+/* Ícones dos indicadores do Dashboard no tema claro. */
+html[data-theme='light'] .wv-stat-card-icon-blue {
+  background: #2563eb !important;
+  border-color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .wv-stat-card-icon-green {
+  background: #16a34a !important;
+  border-color: #15803d !important;
+}
+
+html[data-theme='light'] .wv-stat-card-icon-red {
+  background: #dc2626 !important;
+  border-color: #b91c1c !important;
+}
+
+html[data-theme='light'] .wv-stat-card-icon-yellow {
+  background: #d97706 !important;
+  border-color: #b45309 !important;
+}
+
+html[data-theme='light'] .wv-stat-card-icon svg {
+  color: #ffffff !important;
+  stroke-width: 2.2;
+}
+
+/* Ícones dos cards de Medições no tema claro. */
+html[data-theme='light'] .wv-measurement-card-icon-blue {
+  background: #2563eb !important;
+  border-color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .wv-measurement-card-icon-green {
+  background: #16a34a !important;
+  border-color: #15803d !important;
+}
+
+html[data-theme='light'] .wv-measurement-card-icon-teal {
+  background: #0f766e !important;
+  border-color: #115e59 !important;
+}
+
+html[data-theme='light'] .wv-measurement-card-icon-meta {
+  background: #e8f1ff !important;
+  border-color: #8eb5e8 !important;
+}
+
+html[data-theme='light'] .wv-measurement-card-icon svg {
+  color: #ffffff !important;
+  stroke-width: 2.2;
+}
+
+html[data-theme='light'] .wv-measurement-card-icon-meta svg {
+  color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .wv-ack-button {
+  background: #2563eb !important;
+  border: 1px solid #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgb(37 99 235 / 22%) !important;
+}
+
+html[data-theme='light'] .wv-ack-button:hover {
+  background: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .wv-alarm-status {
+  border: 1px solid #86efac !important;
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+html[data-theme='light'] .wv-alarm-tab {
+  border-radius: 8px 8px 0 0;
+  color: #475569 !important;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 6px;
+}
+
+html[data-theme='light'] .wv-alarm-tab:hover {
+  background: #e8f1ff !important;
+  color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .wv-alarm-tab.text-white {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-login-panel svg {
+  color: #1d4ed8;
+}
+
+html[data-theme='light'] .theme-login-panel button[class*='bg-blue'] svg {
+  color: #ffffff;
+}
+
+/* Contraste dos modais e microtelas no tema claro. */
+html[data-theme='light'] .theme-app [role='dialog'] {
+  color: #111827 !important;
+}
+
+html[data-theme='light'] .theme-app [role='dialog'] button {
+  color: #1e293b !important;
+}
+
+html[data-theme='light'] .theme-app [role='dialog'] button svg {
+  color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .theme-app [role='dialog'] button[class*='bg-blue'],
+html[data-theme='light'] .theme-app [role='dialog'] button[class*='bg-[#2855A4'],
+html[data-theme='light'] .theme-app [role='dialog'] button[aria-pressed='true'] {
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-app [role='dialog'] button[class*='bg-blue'] svg,
+html[data-theme='light'] .theme-app [role='dialog'] button[class*='bg-[#2855A4'] svg,
+html[data-theme='light'] .theme-app [role='dialog'] button[aria-pressed='true'] svg {
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-app [role='dialog'] button:hover:not([class*='bg-blue']):not([aria-pressed='true']) {
+  background: #e8f1ff !important;
+  color: #0f2f65 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+  border-color: #cbd8e7 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel button {
+  color: #1e293b !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel button svg {
+  color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='bg-blue'],
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='bg-[#1C3B6E'],
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='bg-[#2855A4'],
+html[data-theme='light'] .theme-app .wv-modal-panel button[aria-pressed='true'] {
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='bg-blue'] svg,
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='bg-[#1C3B6E'] svg,
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='bg-[#2855A4'] svg,
+html[data-theme='light'] .theme-app .wv-modal-panel button[aria-pressed='true'] svg {
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='bg-[#1C3B6E'] {
+  background: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='bg-[#1C3B6E'] svg {
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel button:hover:not([class*='bg-blue']):not([aria-pressed='true']) {
+  background: #e8f1ff !important;
+  color: #0f2f65 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-header {
+  border-color: #cbd8e7 !important;
+  background: linear-gradient(135deg, #f5f9ff, #e8f1ff) !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-header {
+  border-color: #cbd8e7 !important;
+  background: linear-gradient(135deg, #f5f9ff, #e8f1ff) !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-header h2,
+html[data-theme='light'] .theme-app .wv-calc-header p {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-header button {
+  color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-icon {
+  border-color: #93c5fd !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-table {
+  border-color: #cbd8e7 !important;
+  background: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-table h3,
+html[data-theme='light'] .theme-app .wv-calc-table span,
+html[data-theme='light'] .theme-app .wv-calc-table p {
+  color: #1e293b !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-table [class*='text-blue-'] {
+  color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-total {
+  background: #f1f6fc !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-total p {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-coverage-complete {
+  border-color: #86efac !important;
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-coverage-partial {
+  border-color: #fbbf24 !important;
+  background: #fffbeb !important;
+  color: #92400e !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-warning {
+  border-color: #fbbf24 !important;
+  background: #fffbeb !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-warning svg,
+html[data-theme='light'] .theme-app .wv-calc-warning p {
+  color: #92400e !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-footer {
+  border-color: #cbd8e7 !important;
+  background: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-footer button {
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-calc-footer button:hover {
+  background: #e8f1ff !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-header h2,
+html[data-theme='light'] .theme-app .wv-modal-header p {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='text-[#4BAE7B'] {
+  color: #15803d !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='text-[#8392A8'] {
+  color: #475569 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel button[class*='text-[#C5A059'] {
+  color: #a16207 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel svg[class*='text-[#C5A059'] {
+  color: #a16207 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel [class*='text-[#4BAE7B'] {
+  color: #15803d !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel [class*='text-[#8392A8'] {
+  color: #475569 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel [class*='text-[#E59A92'] {
+  color: #b91c1c !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel [class*='text-[#E5C47B'] {
+  color: #a16207 !important;
+}
+
+html[data-theme='light'] .theme-app .wv-modal-panel [class*='text-[#80B6C6'],
+html[data-theme='light'] .theme-app .wv-modal-panel [class*='text-[#6CA8B0'] {
+  color: #0f766e !important;
+}
+
 html[data-theme='light'] .wv-filter-control {
   border-color: #b9c9dc !important;
   background: #ffffff !important;
@@ -317,6 +646,25 @@ html[data-theme='light'] .wv-active-column-header {
 html[data-theme='light'] .wv-active-column-cell {
   background-color: #e5efff !important;
   color: #111827 !important;
+}
+
+html[data-theme='light'] .wv-pagination-active {
+  border-color: #1d4ed8 !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 2px rgb(37 99 235 / 18%);
+}
+
+html[data-theme='light'] .wv-pagination-inactive {
+  border-color: #cbd8e7 !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+}
+
+html[data-theme='light'] .wv-pagination-inactive:hover {
+  border-color: #6b9ee8 !important;
+  background: #e8f1ff !important;
+  color: #1d4ed8 !important;
 }
 
 .wv-dashboard-chart {

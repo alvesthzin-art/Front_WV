@@ -74,7 +74,7 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
         <div className="flex items-center gap-6">
           <button
             onClick={() => { setActiveTab('ativos'); setPaginaAtual(1); }}
-            className={`relative pb-2 text-sm font-semibold transition-colors ${
+            className={`wv-alarm-tab relative pb-2 text-sm font-semibold transition-colors ${
               activeTab === 'ativos' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -85,7 +85,7 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
           </button>
           <button
             onClick={() => { setActiveTab('historico'); setPaginaAtual(1); }}
-            className={`relative pb-2 text-sm font-semibold transition-colors ${
+            className={`wv-alarm-tab relative pb-2 text-sm font-semibold transition-colors ${
               activeTab === 'historico' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -275,7 +275,7 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
                         ) : (
                           <button
                             onClick={(e) => handleReconhecerClick(idAlarme, e)}
-                            className="h-7 px-3 rounded-lg bg-[#1D4ED8] hover:bg-[#1E40AF] text-white font-medium text-xs transition-colors shadow-[0_0_12px_rgba(29,78,216,0.3)]"
+                            className="wv-ack-button h-7 px-3 rounded-lg bg-[#1D4ED8] hover:bg-[#1E40AF] text-white font-medium text-xs transition-colors shadow-[0_0_12px_rgba(29,78,216,0.3)]"
                           >
                             Reconhecer
                           </button>
@@ -313,14 +313,14 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
       {/* Modal de Detalhes */}
       {selectedAlarme && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-[#1B2A40] bg-[#0C141F] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+          <div className="wv-modal-panel w-full max-w-lg rounded-2xl border border-[#1B2A40] bg-[#0C141F] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
                     ● {getSeveridade(selectedAlarme)}
                   </span>
-                  <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-800 text-slate-300">
+                  <span className="wv-alarm-status px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-800 text-slate-300">
                     {selectedAlarme.status || 'Ativo'}
                   </span>
                 </div>
@@ -360,7 +360,7 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer }) {
                 {!(selectedAlarme.reconhecido || selectedAlarme.status === 'Reconhecido' || selectedAlarme.id_usuario_reconhecimento) && (
                   <button
                     onClick={() => handleReconhecerClick(selectedAlarme.id_alerta || selectedAlarme.id)}
-                    className="rounded-xl bg-[#1D4ED8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#1E40AF]"
+                    className="wv-ack-button rounded-xl bg-[#1D4ED8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#1E40AF]"
                   >
                     Reconhecer Alarme
                   </button>

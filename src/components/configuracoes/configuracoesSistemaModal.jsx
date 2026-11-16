@@ -102,6 +102,7 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
   | para atualizar o estado e refletir a mudança na interface.
   */
   const [settings, setSettings] = useState(initialSettings);
+  const [temaSelecionado, setTemaSelecionado] = useState(theme);
 
   /*
   | saved guarda os valores considerados salvos nesta instância.
@@ -362,6 +363,7 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
 
   const saveChanges = () => {
     setSaved(settings);
+    onThemeChange?.(temaSelecionado);
     onClose();
   };
 
@@ -616,9 +618,9 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
                       <button
                         key={option.id}
                         type="button"
-                        onClick={() => onThemeChange?.(option.id)}
-                        aria-pressed={theme === option.id}
-                        className={`rounded-lg border px-3 py-3 text-left transition ${theme === option.id ? 'border-[#3768C5]/60 bg-[#193564] text-white' : 'border-transparent text-[#8E98A6] hover:bg-[#172235] hover:text-white'}`}
+                        onClick={() => setTemaSelecionado(option.id)}
+                        aria-pressed={temaSelecionado === option.id}
+                        className={`rounded-lg border px-3 py-3 text-left transition ${temaSelecionado === option.id ? 'border-[#3768C5]/60 bg-[#193564] text-white' : 'border-transparent text-[#8E98A6] hover:bg-[#172235] hover:text-white'}`}
                       >
                         <span className="block text-xs font-semibold">{option.label}</span>
                         <span className="mt-1 block text-[10px] opacity-75">{option.description}</span>

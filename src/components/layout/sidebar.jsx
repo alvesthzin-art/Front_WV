@@ -8,7 +8,7 @@ import {
   LogOut
 } from 'lucide-react';
 import logoWV from '../../assets/logoWV.png';
-import logoModoClaro from '../../assets/Logo_modo_claro.jpeg';
+import logoModoClaro from '../../assets/logo_modo_claro.png';
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, path: '/' },

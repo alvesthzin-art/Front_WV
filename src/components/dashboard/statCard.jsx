@@ -56,13 +56,13 @@ function StatCard({ item }) {
 
       {/* Ícone */}
       <div
-        className="
+          className={`wv-stat-card-icon wv-stat-card-icon-${toneKey}
           relative z-10 flex h-9 w-9 shrink-0
           items-center justify-center
           rounded-[11px]
           border border-white/[0.07]
           shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]
-        "
+          `}
         style={{ background: iconGradients[toneKey] }}
       >
         {Icon && (

@@ -42,7 +42,7 @@ export default function NovoLimiteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#141C2B] bg-[#070B15] p-6 text-slate-200 shadow-2xl">
+      <div className="wv-modal-panel relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#141C2B] bg-[#070B15] p-6 text-slate-200 shadow-2xl">
         <div className="mb-6 flex items-start justify-between"><div><h2 className="text-lg font-medium text-slate-100">{itemEdicao ? 'Editar Limite' : 'Novo Limite'}</h2><p className="mt-0.5 text-xs text-slate-400">Configure uma condição para monitoramento energético.</p></div><button type="button" onClick={onFechar} className="rounded-lg p-1 text-slate-400 hover:bg-[#111B2A] hover:text-slate-200" aria-label="Fechar modal"><X size={18} /></button></div>
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div><label className="mb-1.5 block font-medium text-slate-300">Escopo</label><div className="grid grid-cols-3 gap-1 rounded-xl border border-[#162136] bg-[#0B1220] p-1">{escopos.map((item) => <button key={item} type="button" onClick={() => { setEscopo(item); setEntidade(''); }} className={`rounded-lg py-2 font-medium ${escopo === item ? 'bg-[#1C3B6E] text-white ring-1 ring-[#2E5899]' : 'text-slate-400 hover:text-slate-200'}`}>{item}</button>)}</div></div>

@@ -112,12 +112,12 @@ export default function CalculoButton({
             role="dialog"
             aria-modal="true"
             aria-labelledby="titulo-calculo"
-            className="my-auto flex max-h-[94dvh] w-full max-w-[610px] flex-col overflow-hidden rounded-[28px] border border-slate-700/80 bg-[#0d1727] text-slate-200 shadow-2xl"
+            className="wv-modal-panel my-auto flex max-h-[94dvh] w-full max-w-[610px] flex-col overflow-hidden rounded-[28px] border border-slate-700/80 bg-[#0d1727] text-slate-200 shadow-2xl"
           >
             {/* Cabeçalho */}
-            <header className="flex shrink-0 items-center justify-between gap-4 border-b border-blue-900/30 bg-gradient-to-r from-[#192b49] to-[#0d1727] px-5 py-5 sm:px-8">
+            <header className="wv-calc-header flex shrink-0 items-center justify-between gap-4 border-b border-blue-900/30 bg-gradient-to-r from-[#192b49] to-[#0d1727] px-5 py-5 sm:px-8">
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-500/20 bg-blue-500/10 text-2xl text-blue-400">
+                <div className="wv-calc-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-500/20 bg-blue-500/10 text-2xl text-blue-400">
                   Σ
                 </div>
 
@@ -145,7 +145,7 @@ export default function CalculoButton({
             </header>
 
             {/* Conteúdo rolável */}
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-8">
+            <div className="wv-calc-content min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-8">
               {carregando ? (
                 <div
                   className="flex min-h-48 items-center justify-center gap-3 text-sm text-slate-400"
@@ -174,7 +174,7 @@ export default function CalculoButton({
               ) : (
                 <>
                   {/* Tabela */}
-                  <div className="overflow-hidden rounded-2xl border border-blue-900/40 bg-[#0e1726]">
+                  <div className="wv-calc-table overflow-hidden rounded-2xl border border-blue-900/40 bg-[#0e1726]">
                     <div className="border-b border-slate-800 px-5 py-4">
                       <h3 className="font-medium text-slate-200">
                         Composição
@@ -231,7 +231,7 @@ export default function CalculoButton({
                     )}
 
                     {/* Total */}
-                    <div className="flex justify-end bg-[#070c17] px-4 py-5 sm:px-6">
+                    <div className="wv-calc-total flex justify-end bg-[#070c17] px-4 py-5 sm:px-6">
                       <p className="text-right text-sm font-semibold text-slate-200 sm:text-base">
                         Soma total: {formatarEnergia(dados.total)} kWh
                       </p>
@@ -241,7 +241,7 @@ export default function CalculoButton({
                   {/* Cobertura */}
                   <div>
                     <span
-                      className={`inline-flex rounded-full border px-4 py-2 text-xs ${
+                      className={`wv-calc-coverage wv-calc-coverage-${coberturaCompleta ? 'complete' : 'partial'} inline-flex rounded-full border px-4 py-2 text-xs ${
                         coberturaCompleta
                           ? "border-emerald-400/20 bg-emerald-500/15 text-emerald-300"
                           : "border-amber-400/20 bg-amber-500/20 text-amber-200"
@@ -258,7 +258,7 @@ export default function CalculoButton({
 
                   {/* Aviso */}
                   {!coberturaCompleta && (
-                    <div className="flex gap-3 rounded-2xl border border-amber-400/20 bg-[#51401c] p-4 sm:p-5">
+                    <div className="wv-calc-warning flex gap-3 rounded-2xl border border-amber-400/20 bg-[#51401c] p-4 sm:p-5">
                       <span className="mt-0.5 shrink-0 text-amber-100">
                         <svg
                           width="22"
@@ -288,7 +288,7 @@ export default function CalculoButton({
             </div>
 
             {/* Rodapé */}
-            <footer className="flex shrink-0 justify-end border-t border-slate-800 bg-[#0d1727] px-5 py-5 sm:px-8">
+            <footer className="wv-calc-footer flex shrink-0 justify-end border-t border-slate-800 bg-[#0d1727] px-5 py-5 sm:px-8">
               <button
                 type="button"
                 onClick={fecharModal}
