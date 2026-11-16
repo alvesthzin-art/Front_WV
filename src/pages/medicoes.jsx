@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { Activity, TrendingUp, Zap } from 'lucide-react';
 
@@ -17,15 +16,21 @@ const HORAS_POR_PERIODO = {
   'Últimos 30 dias': 720,
 };
 
+const CONFIG_GRANDEZA = {
+  Tensão: { campo: 'tensao', unidade: 'V', label: 'tensão' },
+  Corrente: { campo: 'corrente', unidade: 'A', label: 'corrente' },
+  Potência: { campo: 'potencia_ativa', unidade: 'W', label: 'potência ativa' },
+  Energia: { campo: 'energia_acumulada', unidade: 'kWh', label: 'energia acumulada' },
+};
+
 function converterData(data) {
   if (!data) return null;
+  const dataConvertida = new Date(String(data).replace(' ', 'T'));
+  return Number.isNaN(dataConvertida.getTime()) ? null : dataConvertida;
+}
 
-  const valor = String(data).replace(' ', 'T');
-  const dataConvertida = new Date(valor);
-
-  return Number.isNaN(dataConvertida.getTime())
-    ? null
-    : dataConvertida;
+function extrairLista(res) {
+  return Array.isArray(res?.data) ? res.data : res?.data?.dados || [];
 }
 
 export default function Medicao() {
@@ -34,41 +39,131 @@ export default function Medicao() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
 
+  const [locais, setLocais] = useState([]);
+  const [setores, setSetores] = useState([]);
+  const [equipamentos, setEquipamentos] = useState([]);
+  const [pontosMedicao, setPontosMedicao] = useState([]);
+
   const [filtros, setFiltros] = useState({
+    id_local: '',
     local: 'Todos os locais',
+    id_setor: '',
     setor: 'Todos os setores',
+    id_equipamento: '',
     equipamento: 'Todos',
     periodo: 'Hoje',
     grandeza: 'Tensão',
   });
 
-  const [metricas, setMetricas] = useState({
-    mediaPeriodo: '0.0',
-    valorMaximo: '0.0',
-    valorAtual: '0.0',
-  });
-
+  // 1. Carrega estrutura hierárquica (Locais -> Setores -> Equipamentos -> Pontos)
   useEffect(() => {
     let ativo = true;
 
-    async function carregarMedicoesReais() {
+    async function carregarEstrutura() {
+      const [resLocais, resSetores, resEquipamentos, resPontos] =
+        await Promise.all([
+          api.get('/locais').catch(() => ({ data: [] })),
+          api.get('/setores').catch(() => ({ data: [] })),
+          api.get('/equipamentos').catch(() => ({ data: [] })),
+          api.get('/pontos-medicao').catch(() => ({ data: [] })),
+        ]);
+
+      if (!ativo) return;
+
+      setLocais(extrairLista(resLocais));
+      setSetores(extrairLista(resSetores));
+      setEquipamentos(extrairLista(resEquipamentos));
+      setPontosMedicao(extrairLista(resPontos));
+    }
+
+    carregarEstrutura();
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  // 2. Resolve os sensores (id_pzem) correspondentes aos filtros selecionados
+  const idsPzemFiltrados = useMemo(() => {
+    const temFiltro =
+      Boolean(filtros.id_local) ||
+      Boolean(filtros.id_setor) ||
+      Boolean(filtros.id_equipamento);
+
+    if (!temFiltro) {
+      const todos = pontosMedicao.map((p) => Number(p.id_pzem)).filter(Boolean);
+      return todos.length > 0 ? [...new Set(todos)] : [1];
+    }
+
+    const pontosFiltrados = pontosMedicao.filter((ponto) => {
+      const equip = equipamentos.find(
+        (e) => Number(e.id_equipamento || e.id) === Number(ponto.id_equipamento)
+      );
+      const idSetorPonto = ponto.id_setor ?? equip?.id_setor ?? null;
+      const setor = setores.find(
+        (s) => Number(s.id_setor || s.id) === Number(idSetorPonto)
+      );
+      const idLocalPonto =
+        ponto.id_local ?? equip?.id_local ?? setor?.id_local ?? null;
+
+      if (
+        filtros.id_equipamento &&
+        String(ponto.id_equipamento) !== String(filtros.id_equipamento)
+      ) {
+        return false;
+      }
+
+      if (filtros.id_setor && String(idSetorPonto) !== String(filtros.id_setor)) {
+        return false;
+      }
+
+      if (filtros.id_local && String(idLocalPonto) !== String(filtros.id_local)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    return [
+      ...new Set(pontosFiltrados.map((p) => Number(p.id_pzem)).filter(Boolean)),
+    ];
+  }, [
+    filtros.id_local,
+    filtros.id_setor,
+    filtros.id_equipamento,
+    pontosMedicao,
+    equipamentos,
+    setores,
+  ]);
+
+  // 3. Busca série temporal das medições a cada 5s
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarMedicoes() {
+      if (idsPzemFiltrados.length === 0) {
+        if (!ativo) return;
+        setDadosMedicoes([]);
+        setErro('');
+        setCarregando(false);
+        return;
+      }
+
       try {
         const horas = HORAS_POR_PERIODO[filtros.periodo] || 24;
-
-        const resposta = await api.get('/medicoes/serie-temporal', {
-          params: {
-            id_pzem: 1,
-            horas,
-          },
-        });
-
-        const registros =
-          resposta.data?.dados ??
-          (Array.isArray(resposta.data) ? resposta.data : []);
+        const respostas = await Promise.all(
+          idsPzemFiltrados.map((idPzem) =>
+            api
+              .get('/medicoes/serie-temporal', {
+                params: { id_pzem: idPzem, horas },
+              })
+              .catch(() => ({ data: { dados: [] } }))
+          )
+        );
 
         if (!ativo) return;
 
-        const dadosOrdenados = [...registros]
+        const ordenados = respostas
+          .flatMap((res) => extrairLista(res))
           .filter((item) => converterData(item.data_hora))
           .sort(
             (a, b) =>
@@ -76,78 +171,31 @@ export default function Medicao() {
               converterData(b.data_hora).getTime()
           );
 
-        setDadosMedicoes(dadosOrdenados);
+        setDadosMedicoes(ordenados);
         setErro('');
-
-        if (dadosOrdenados.length > 0) {
-          const ultimaLeitura = dadosOrdenados[dadosOrdenados.length - 1];
-
-          const tensoes = dadosOrdenados
-            .map((item) => Number(item.tensao))
-            .filter(Number.isFinite);
-
-          const correntes = dadosOrdenados
-            .map((item) => Number(item.corrente))
-            .filter(Number.isFinite);
-
-          const mediaTensao = tensoes.length
-            ? (
-                tensoes.reduce((soma, valor) => soma + valor, 0) /
-                tensoes.length
-              ).toFixed(1)
-            : '0.0';
-
-          const maxCorrente = correntes.length
-            ? Math.max(...correntes).toFixed(1)
-            : '0.0';
-
-          const potenciaAtual = Number(
-            ultimaLeitura.potencia_ativa ??
-            ultimaLeitura.potencia ??
-            0
-          ).toFixed(2);
-
-          setMetricas({
-            mediaPeriodo: mediaTensao,
-            valorMaximo: maxCorrente,
-            valorAtual: potenciaAtual,
-          });
-        } else {
-          setMetricas({
-            mediaPeriodo: '0.0',
-            valorMaximo: '0.0',
-            valorAtual: '0.0',
-          });
-        }
       } catch (error) {
         console.error('Erro ao carregar medições:', error);
-
-        if (ativo) {
-          setErro('Não foi possível carregar as medições.');
-        }
+        if (ativo) setErro('Não foi possível carregar as medições.');
       } finally {
         if (ativo) setCarregando(false);
       }
     }
 
-    const agendamento = setTimeout(() => {
-      setCarregando(true);
-      void carregarMedicoesReais();
-    }, 0);
-    const intervalo = setInterval(carregarMedicoesReais, 5000);
+    setCarregando(true);
+    carregarMedicoes();
+    const intervalo = setInterval(carregarMedicoes, 5000);
 
     return () => {
       ativo = false;
-      clearTimeout(agendamento);
       clearInterval(intervalo);
     };
-  }, [filtros.periodo]);
+  }, [filtros.periodo, idsPzemFiltrados]);
 
-  const dadosGrafico = useMemo(() => {
+  // 4. Filtra janela exata para "Hoje" ou "Ontem"
+  const dadosFiltradosPeriodo = useMemo(() => {
     if (!['Hoje', 'Ontem'].includes(filtros.periodo)) return dadosMedicoes;
 
-    const agora = new Date();
-    const inicio = new Date(agora);
+    const inicio = new Date();
     inicio.setHours(0, 0, 0, 0);
     if (filtros.periodo === 'Ontem') inicio.setDate(inicio.getDate() - 1);
 
@@ -160,17 +208,41 @@ export default function Medicao() {
     });
   }, [dadosMedicoes, filtros.periodo]);
 
-  // A tabela continua recebendo o histórico completo.
+  // 5. Calcula métricas dos cards de acordo com a grandeza e período selecionados
+  const metricas = useMemo(() => {
+    const cfg = CONFIG_GRANDEZA[filtros.grandeza] || CONFIG_GRANDEZA.Tensão;
+    const valores = dadosFiltradosPeriodo
+      .map((item) => Number(item[cfg.campo]))
+      .filter(Number.isFinite);
+
+    if (valores.length === 0) {
+      return {
+        mediaPeriodo: '0.0',
+        valorMaximo: '0.0',
+        valorAtual: '0.0',
+        unidade: cfg.unidade,
+        label: cfg.label,
+      };
+    }
+
+    const soma = valores.reduce((acc, v) => acc + v, 0);
+    const casas = filtros.grandeza === 'Energia' ? 2 : 1;
+
+    return {
+      mediaPeriodo: (soma / valores.length).toFixed(casas),
+      valorMaximo: Math.max(...valores).toFixed(casas),
+      valorAtual: valores[valores.length - 1].toFixed(casas),
+      unidade: cfg.unidade,
+      label: cfg.label,
+    };
+  }, [dadosFiltradosPeriodo, filtros.grandeza]);
+
+  // 6. Formata linhas da tabela de dados brutos
   const dadosBrutos = useMemo(() => {
-    return [...dadosMedicoes]
-      .sort(
-        (a, b) =>
-          converterData(b.data_hora).getTime() -
-          converterData(a.data_hora).getTime()
-      )
+    return [...dadosFiltradosPeriodo]
+      .reverse()
       .map((item) => {
         const dataHora = converterData(item.data_hora);
-
         return {
           data: dataHora.toLocaleDateString('pt-BR'),
           hora: dataHora.toLocaleTimeString('pt-BR', {
@@ -185,12 +257,15 @@ export default function Medicao() {
           data_hora: item.data_hora,
         };
       });
-  }, [dadosMedicoes]);
+  }, [dadosFiltradosPeriodo]);
 
   return (
     <main className="min-h-screen space-y-6 bg-transparent p-4 text-slate-200 md:p-6">
       <div className="mb-5">
         <FiltrosMedicao
+          locais={locais}
+          setores={setores}
+          equipamentos={equipamentos}
           filtros={filtros}
           onFiltrosChange={setFiltros}
           onDefinirMeta={() => setModalAberto(true)}
@@ -201,8 +276,8 @@ export default function Medicao() {
         <CardMedicao
           titulo="Média do Período"
           valor={metricas.mediaPeriodo}
-          unidade="V"
-          descricao="Média de tensão"
+          unidade={metricas.unidade}
+          descricao={`Média de ${metricas.label}`}
           icone={Zap}
           cor="blue"
         />
@@ -210,8 +285,8 @@ export default function Medicao() {
         <CardMedicao
           titulo="Valor Máximo"
           valor={metricas.valorMaximo}
-          unidade="A"
-          descricao="Maior corrente registrada"
+          unidade={metricas.unidade}
+          descricao={`Maior ${metricas.label} registrada`}
           icone={Activity}
           cor="green"
         />
@@ -219,15 +294,13 @@ export default function Medicao() {
         <CardMedicao
           titulo="Valor Atual"
           valor={metricas.valorAtual}
-          unidade="W"
-          descricao="Potência ativa"
+          unidade={metricas.unidade}
+          descricao={`Última leitura de ${metricas.label}`}
           icone={TrendingUp}
           cor="teal"
         />
 
-        <CardMetaMedicao
-          onDefinirMeta={() => setModalAberto(true)}
-        />
+        <CardMetaMedicao onDefinirMeta={() => setModalAberto(true)} />
       </section>
 
       {erro && (
@@ -238,7 +311,7 @@ export default function Medicao() {
 
       <section className="mt-6 min-w-0 overflow-hidden">
         <TensaoAoLongoDoTempo
-          dados={dadosGrafico}
+          dados={dadosFiltradosPeriodo}
           grandeza={filtros.grandeza}
           periodo={filtros.periodo}
           carregando={carregando}
@@ -254,9 +327,7 @@ export default function Medicao() {
       </section>
 
       {modalAberto && (
-        <MedicoesAlarmesModal
-          onClose={() => setModalAberto(false)}
-        />
+        <MedicoesAlarmesModal onClose={() => setModalAberto(false)} />
       )}
     </main>
   );

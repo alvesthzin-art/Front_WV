@@ -1,22 +1,91 @@
+import { useMemo } from 'react';
 import { Target } from 'lucide-react';
 
 export default function FiltrosMedicao({
-  locais = ['Todos os locais'],
-  setores = ['Todos os setores'],
-  equipamentos = ['Todos'],
+  locais = [],
+  setores = [],
+  equipamentos = [],
   onDefinirMeta,
   filtros,
   onFiltrosChange,
 }) {
   const valoresIniciais = {
+    id_local: '',
     local: 'Todos os locais',
+    id_setor: '',
     setor: 'Todos os setores',
+    id_equipamento: '',
     equipamento: 'Todos',
     periodo: 'Hoje',
     grandeza: 'Tensão',
   };
 
   const valores = { ...valoresIniciais, ...filtros };
+
+  // Filtra setores pertencentes ao local selecionado
+  const setoresFiltrados = useMemo(() => {
+    if (!valores.id_local) return setores;
+    return setores.filter(
+      (s) => String(s.id_local) === String(valores.id_local)
+    );
+  }, [setores, valores.id_local]);
+
+  // Filtra equipamentos pertencentes ao setor (ou aos setores do local selecionado)
+  const equipamentosFiltrados = useMemo(() => {
+    if (valores.id_setor) {
+      return equipamentos.filter(
+        (eq) => String(eq.id_setor) === String(valores.id_setor)
+      );
+    }
+    if (valores.id_local) {
+      const idsSetores = new Set(
+        setoresFiltrados.map((s) => String(s.id_setor || s.id))
+      );
+      return equipamentos.filter((eq) => idsSetores.has(String(eq.id_setor)));
+    }
+    return equipamentos;
+  }, [equipamentos, setoresFiltrados, valores.id_local, valores.id_setor]);
+
+  function handleLocalChange(idLocal) {
+    const item = locais.find(
+      (l) => String(l.id_local || l.id) === String(idLocal)
+    );
+    onFiltrosChange?.({
+      ...valores,
+      id_local: idLocal,
+      local: item ? item.nome_local || item.nome : 'Todos os locais',
+      id_setor: '',
+      setor: 'Todos os setores',
+      id_equipamento: '',
+      equipamento: 'Todos',
+    });
+  }
+
+  function handleSetorChange(idSetor) {
+    const item = setores.find(
+      (s) => String(s.id_setor || s.id) === String(idSetor)
+    );
+    onFiltrosChange?.({
+      ...valores,
+      id_setor: idSetor,
+      setor: item ? item.nome_setor || item.nome : 'Todos os setores',
+      id_equipamento: '',
+      equipamento: 'Todos',
+    });
+  }
+
+  function handleEquipamentoChange(idEquipamento) {
+    const item = equipamentos.find(
+      (eq) => String(eq.id_equipamento || eq.id) === String(idEquipamento)
+    );
+    onFiltrosChange?.({
+      ...valores,
+      id_equipamento: idEquipamento,
+      equipamento: item
+        ? item.nome_equipamento || item.equipamento || item.nome
+        : 'Todos',
+    });
+  }
 
   function atualizar(campo, valor) {
     onFiltrosChange?.({
@@ -39,14 +108,21 @@ export default function FiltrosMedicao({
             <span className={estiloLabel}>Local:</span>
             <select
               className="wv-filter-select w-full min-w-0 flex-1 bg-transparent outline-none"
-              value={valores.local}
-              onChange={(e) => atualizar('local', e.target.value)}
+              value={valores.id_local}
+              onChange={(e) => handleLocalChange(e.target.value)}
             >
-              {locais.map((item) => (
-                <option key={item} value={item} className="bg-[#0C141F]">
-                  {item}
-                </option>
-              ))}
+              <option value="" className="bg-[#0C141F]">
+                Todos os locais
+              </option>
+              {locais.map((item) => {
+                const id = item.id_local || item.id;
+                const nome = item.nome_local || item.nome;
+                return (
+                  <option key={id} value={id} className="bg-[#0C141F]">
+                    {nome}
+                  </option>
+                );
+              })}
             </select>
           </label>
 
@@ -54,29 +130,46 @@ export default function FiltrosMedicao({
             <span className={estiloLabel}>Setor:</span>
             <select
               className="wv-filter-select w-full min-w-0 flex-1 bg-transparent outline-none"
-              value={valores.setor}
-              onChange={(e) => atualizar('setor', e.target.value)}
+              value={valores.id_setor}
+              onChange={(e) => handleSetorChange(e.target.value)}
             >
-              {setores.map((item) => (
-                <option key={item} value={item} className="bg-[#0C141F]">
-                  {item}
-                </option>
-              ))}
+              <option value="" className="bg-[#0C141F]">
+                Todos os setores
+              </option>
+              {setoresFiltrados.map((item) => {
+                const id = item.id_setor || item.id;
+                const nome = item.nome_setor || item.nome;
+                return (
+                  <option key={id} value={id} className="bg-[#0C141F]">
+                    {nome}
+                  </option>
+                );
+              })}
             </select>
           </label>
 
-          <label className={`${estiloSelect} col-span-2 flex min-w-0 items-center gap-1.5 sm:col-span-1`}>
+          <label
+            className={`${estiloSelect} col-span-2 flex min-w-0 items-center gap-1.5 sm:col-span-1`}
+          >
             <span className={estiloLabel}>Equipamento:</span>
             <select
               className="wv-filter-select w-full min-w-0 flex-1 bg-transparent outline-none"
-              value={valores.equipamento}
-              onChange={(e) => atualizar('equipamento', e.target.value)}
+              value={valores.id_equipamento}
+              onChange={(e) => handleEquipamentoChange(e.target.value)}
             >
-              {equipamentos.map((item) => (
-                <option key={item} value={item} className="bg-[#0C141F]">
-                  {item}
-                </option>
-              ))}
+              <option value="" className="bg-[#0C141F]">
+                Todos
+              </option>
+              {equipamentosFiltrados.map((item) => {
+                const id = item.id_equipamento || item.id;
+                const nome =
+                  item.nome_equipamento || item.equipamento || item.nome;
+                return (
+                  <option key={id} value={id} className="bg-[#0C141F]">
+                    {nome}
+                  </option>
+                );
+              })}
             </select>
           </label>
         </div>

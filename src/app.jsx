@@ -11,6 +11,10 @@ import Alarmes from './pages/alarmes';
 import Conectividade from './pages/conectividade';
 import { limparSessao } from './services/session';
 import PerfilModal from './components/layout/perfilModal';
+import axios from 'axios';
+
+
+
 
 const PAGINAS_BUSCA = [
   { id: 'Dashboard', label: 'Dashboard', description: 'Visão geral do sistema', keywords: ['inicio', 'painel'] },
