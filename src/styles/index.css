@@ -702,3 +702,80 @@ html[data-theme='light'] .theme-login-panel button[class*='bg-blue'] span,
 html[data-theme='light'] .theme-login-panel button[class*='bg-blue'] svg {
   color: #ffffff !important;
 }
+
+/* Login: contraste reforçado no tema claro. */
+html[data-theme='light'] .theme-login-panel {
+  background: #f8fbff !important;
+  border-left-color: #d6e1ee !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .theme-login-panel input {
+  background: #ffffff !important;
+  border-color: #b8c9dd !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+html[data-theme='light'] .theme-login-panel input::placeholder {
+  color: #64748b !important;
+  opacity: 1;
+}
+
+html[data-theme='light'] .theme-login-panel input:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 14%) !important;
+}
+
+html[data-theme='light'] .theme-login-panel button[type='button'] {
+  color: #334155 !important;
+}
+
+html[data-theme='light'] .theme-login-panel button[type='button']:hover {
+  color: #1d4ed8 !important;
+}
+
+html[data-theme='light'] .theme-login-panel input[type='checkbox'] {
+  accent-color: #2563eb;
+}
+
+html[data-theme='light'] .theme-login-panel a {
+  color: #1d4ed8 !important;
+  font-weight: 600;
+}
+
+html[data-theme='light'] .theme-login-panel [role='alert'] {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #be123c !important;
+}
+
+html[data-theme='light'] .theme-login-panel > div:last-child {
+  border-top-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+html[data-theme='light'] .theme-login-panel > div:last-child svg {
+  color: #1d4ed8 !important;
+}
+
+/* O painel esquerdo continua escuro por usar a imagem industrial;
+   portanto seus textos não devem receber a regra global do tema claro. */
+html[data-theme='light'] .theme-login-hero h1 {
+  color: #ffffff !important;
+  text-shadow: 0 2px 10px rgb(0 0 0 / 45%);
+}
+
+html[data-theme='light'] .theme-login-hero h1 span {
+  color: #60a5fa !important;
+}
+
+html[data-theme='light'] .theme-login-hero p {
+  color: #e2e8f0 !important;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 70%);
+  opacity: 1 !important;
+}
+
+html[data-theme='light'] .theme-login-hero > div:first-child {
+  color: #a7f3d0 !important;
+}
