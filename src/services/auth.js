@@ -26,3 +26,17 @@ export async function validarSessao() {
     throw erro;
   }
 }
+
+export async function alterarMinhaSenha(senhaAtual, novaSenha) {
+  const resposta = await api.patch('/usuarios/me/senha', {
+    senhaAtual,
+    novaSenha,
+  });
+
+  return resposta.data;
+}
+
+export async function redefinirSenhaUsuario(id, novaSenha) {
+  const resposta = await api.patch(`/usuarios/${id}/senha`, { novaSenha });
+  return resposta.data;
+}

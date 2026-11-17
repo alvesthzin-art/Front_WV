@@ -3,17 +3,32 @@ import { Eye, EyeOff, Lock, ShieldCheck, Activity, Wifi, ArrowRight } from 'luci
 import loginBg from '../assets/login.png';
 import logoWV from '../assets/logoWV.png';
 import logoModoClaro from '../assets/logo_modo_claro.png';
+import { entrar } from '../services/auth';
 
 export function Login({ onLoginSuccess, theme = 'dark' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Acesso demonstrativo enquanto o cadastro de usuários não está disponível.
-    onLoginSuccess?.();
+    setErro('');
+    setCarregando(true);
+
+    try {
+      const usuario = await entrar(email.trim(), password, rememberMe);
+      onLoginSuccess?.(usuario);
+    } catch (error) {
+      const mensagem = error.response?.data?.mensagem || error.response?.data?.message;
+      setErro(mensagem || (!error.response
+        ? 'Não foi possível conectar ao backend. Verifique se o servidor está rodando na porta 3000.'
+        : 'Não foi possível entrar. Confira o e-mail e a senha.'));
+    } finally {
+      setCarregando(false);
+    }
   };
 
   return (
@@ -85,6 +100,8 @@ export function Login({ onLoginSuccess, theme = 'dark' }) {
               </label>
               <input
                 type="email"
+                name="email"
+                autoComplete="username"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -102,6 +119,8 @@ export function Login({ onLoginSuccess, theme = 'dark' }) {
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  name="senha"
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -117,6 +136,12 @@ export function Login({ onLoginSuccess, theme = 'dark' }) {
                 </button>
               </div>
             </div>
+
+            {erro && (
+              <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {erro}
+              </div>
+            )}
 
             {/* Opções: Lembrar Acesso e Esqueci Senha */}
             <div className="flex items-center justify-between text-xs">
@@ -137,9 +162,10 @@ export function Login({ onLoginSuccess, theme = 'dark' }) {
             {/* Botão Entrar */}
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition-colors"
+              disabled={carregando}
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition-colors"
             >
-              <span>Entrar</span>
+              <span>{carregando ? 'Entrando...' : 'Entrar'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

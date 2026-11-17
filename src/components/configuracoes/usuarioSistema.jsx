@@ -1,44 +1,16 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Plus,
   Pencil,
-  Trash2,
   X,
   Save,
 } from 'lucide-react';
-
-const usuariosIniciais = [
-  {
-    id: 1,
-    nome: 'Gabriel Santos',
-    email: 'gabriel.santos@wattvision.com',
-    perfil: 'Administrador',
-    local: 'Acesso global',
-    status: 'Ativo',
-    ultimoAcesso: '19/10/2026, 05:42:00',
-  },
-  {
-    id: 2,
-    nome: 'Mariana Costa',
-    email: 'mariana.costa@wattvision.com',
-    perfil: 'Gestor',
-    local: 'Planta Industrial Jandira',
-    status: 'Ativo',
-    ultimoAcesso: '18/10/2026, 13:30:00',
-  },
-  {
-    id: 3,
-    nome: 'Roberto Silva',
-    email: 'roberto.silva@wattvision.com',
-    perfil: 'Gestor',
-    local: 'Planta Industrial Osasco +1',
-    status: 'Inativo',
-    ultimoAcesso: '—',
-  },
-];
+import api from '../../services/api';
+import { redefinirSenhaUsuario } from '../../services/auth';
 
 const formularioInicial = {
+  id_empresa: 1,
   nome: '',
   email: '',
   senha: '',
@@ -53,11 +25,36 @@ const labelClass =
   'mb-2 block text-xs font-medium text-[#afb5ba]';
 
   export function UsuariosSistema() {
-  const [usuarios, setUsuarios] = useState(usuariosIniciais);
+  const [usuarios, setUsuarios] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
   const [formulario, setFormulario] = useState(formularioInicial);
   const [mensagem, setMensagem] = useState('');
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    let montado = true;
+
+    api.get('/usuarios')
+      .then((resposta) => {
+        if (!montado) return;
+        setUsuarios((resposta.data?.dados || []).map((usuario) => ({
+          ...usuario,
+          local: usuario.perfil === 'Administrador' ? 'Acesso global' : 'Consultar autorizações',
+          ultimoAcesso: usuario.ultimo_acesso
+            ? new Date(usuario.ultimo_acesso).toLocaleString('pt-BR')
+            : '—',
+        })));
+      })
+      .catch((error) => {
+        if (montado) setMensagem(error.response?.data?.mensagem || 'Não foi possível carregar os usuários.');
+      })
+      .finally(() => {
+        if (montado) setCarregando(false);
+      });
+
+    return () => { montado = false; };
+  }, []);
 
   const administradores = usuarios.filter(
     (usuario) => usuario.perfil === 'Administrador'
@@ -76,6 +73,7 @@ const labelClass =
 
   function abrirEdicao(usuario) {
     setFormulario({
+      id_empresa: usuario.id_empresa,
       nome: usuario.nome,
       email: usuario.email,
       senha: '',
@@ -102,7 +100,7 @@ const labelClass =
     }));
   }
 
-  function salvarUsuario(event) {
+  async function salvarUsuario(event) {
     event.preventDefault();
     setMensagem('');
 
@@ -117,49 +115,51 @@ const labelClass =
       return;
     }
 
-    if (editandoId !== null) {
-      setUsuarios((atuais) =>
-        atuais.map((usuario) =>
-          usuario.id === editandoId
-            ? {
-                ...usuario,
-                nome: formulario.nome.trim(),
-                email: formulario.email.trim(),
-                perfil: formulario.perfil,
-                status: formulario.status,
-              }
-            : usuario
-        )
-      );
-    } else {
-      const novoUsuario = {
-        id: Date.now(),
+    try {
+      const dados = {
+        id_empresa: formulario.id_empresa || 1,
         nome: formulario.nome.trim(),
         email: formulario.email.trim(),
         perfil: formulario.perfil,
-        local:
-          formulario.perfil === 'Administrador'
-            ? 'Acesso global'
-            : 'Não definido',
         status: formulario.status,
-        ultimoAcesso: '—',
       };
 
-      setUsuarios((atuais) => [...atuais, novoUsuario]);
-    }
+      const resposta = editandoId !== null
+        ? await api.put(`/usuarios/${editandoId}`, dados)
+        : await api.post('/usuarios', { ...dados, senha: formulario.senha });
+      const usuarioSalvo = resposta.data?.dados;
 
-    cancelarFormulario();
+      if (editandoId !== null) {
+        setUsuarios((atuais) => atuais.map((usuario) => usuario.id === editandoId
+          ? { ...usuario, ...usuarioSalvo, local: usuario.local, ultimoAcesso: usuario.ultimoAcesso }
+          : usuario));
+      } else if (usuarioSalvo) {
+        setUsuarios((atuais) => [...atuais, {
+          ...usuarioSalvo,
+          local: usuarioSalvo.perfil === 'Administrador' ? 'Acesso global' : 'Consultar autorizações',
+          ultimoAcesso: '—',
+        }]);
+      }
+
+      cancelarFormulario();
+    } catch (error) {
+      setMensagem(error.response?.data?.mensagem || 'Não foi possível salvar o usuário.');
+    }
   }
 
-  function excluirUsuario(id) {
-    const confirmar = window.confirm(
-      'Tem certeza de que deseja excluir este usuário?'
-    );
+  async function redefinirSenha(usuario) {
+    const novaSenha = window.prompt(`Digite uma nova senha para ${usuario.email} (mínimo de 8 caracteres):`);
+    if (novaSenha === null) return;
+    if (novaSenha.length < 8) {
+      setMensagem('A nova senha deve conter pelo menos 8 caracteres.');
+      return;
+    }
 
-    if (confirmar) {
-      setUsuarios((atuais) =>
-        atuais.filter((usuario) => usuario.id !== id)
-      );
+    try {
+      await redefinirSenhaUsuario(usuario.id, novaSenha);
+      setMensagem(`Senha redefinida para ${usuario.email}.`);
+    } catch (error) {
+      setMensagem(error.response?.data?.mensagem || 'Não foi possível redefinir a senha.');
     }
   }
 
@@ -186,6 +186,8 @@ const labelClass =
           Novo Usuário
         </button>
       </div>
+
+      {mensagem && !mostrarFormulario && <p role="status" className="text-xs text-blue-400">{mensagem}</p>}
 
       {/* Formulário exibido ao clicar em Novo Usuário ou Editar */}
       {mostrarFormulario && (
@@ -241,15 +243,15 @@ const labelClass =
                 onChange={(e) => atualizarCampo('senha', e.target.value)}
                 placeholder={
                   editandoId !== null
-                    ? 'Deixe vazio para manter'
-                    : 'Mínimo de 6 caracteres'
+                    ? 'Senha não é alterada nesta tela'
+                    : 'Mínimo de 8 caracteres'
                 }
-                minLength={editandoId === null ? 6 : undefined}
+                minLength={editandoId === null ? 8 : undefined}
                 required={editandoId === null}
                 autoComplete="new-password"
               />
               <p className="mt-1.5 text-[10px] text-[#4A525B]">
-                Mínimo de 6 caracteres
+                A senha deve conter entre 8 e 72 caracteres.
               </p>
             </div>
 
@@ -317,7 +319,11 @@ const labelClass =
           </thead>
 
           <tbody>
-            {usuarios.map((usuario) => (
+            {carregando && (
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-xs text-[#68717C]">Carregando usuários...</td></tr>
+            )}
+
+            {!carregando && usuarios.map((usuario) => (
               <tr
                 key={usuario.id}
                 className="border-b border-[#17263D] last:border-b-0 hover:bg-[#111B2A]"
@@ -376,18 +382,18 @@ const labelClass =
 
                     <button
                       type="button"
-                      onClick={() => excluirUsuario(usuario.id)}
-                      aria-label={`Excluir ${usuario.nome}`}
-                      className="text-[#D66B76] hover:text-red-400"
+                      onClick={() => redefinirSenha(usuario)}
+                      aria-label={`Redefinir senha de ${usuario.nome}`}
+                      className="text-[#5A8FDE] hover:text-white"
                     >
-                      <Trash2 size={14} />
+                      <Save size={14} />
                     </button>
                   </div>
                 </td>
               </tr>
             ))}
 
-            {usuarios.length === 0 && (
+            {!carregando && usuarios.length === 0 && (
               <tr>
                 <td
                   colSpan={6}

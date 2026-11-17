@@ -9,9 +9,9 @@ import Operacional from './pages/operacional';
 import Relatorios from './pages/relatorios';
 import Alarmes from './pages/alarmes';
 import Conectividade from './pages/conectividade';
+import { validarSessao } from './services/auth';
 import { limparSessao } from './services/session';
 import PerfilModal from './components/layout/perfilModal';
-import axios from 'axios';
 
 
 
@@ -30,6 +30,8 @@ const THEME_KEY = 'wattvision_theme';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [usuario, setUsuario] = useState(null);
+  const [restaurandoSessao, setRestaurandoSessao] = useState(true);
   const [activePage, setActivePage] = useState('Dashboard');
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -43,6 +45,25 @@ export default function App() {
     try { localStorage.setItem(THEME_KEY, theme); } catch { /* armazenamento indisponível */ }
   }, [theme]);
 
+  useEffect(() => {
+    let montado = true;
+
+    validarSessao()
+      .then((usuarioAtual) => {
+        if (!montado || !usuarioAtual) return;
+        setUsuario(usuarioAtual);
+        setIsAuthenticated(true);
+      })
+      .catch(() => {
+        // A sessão inválida é removida pelo serviço e o login será exibido.
+      })
+      .finally(() => {
+        if (montado) setRestaurandoSessao(false);
+      });
+
+    return () => { montado = false; };
+  }, []);
+
   const navegarPelaBusca = (item) => {
     if (!item) return;
     const chave = normalizar(typeof item === 'string' ? item : (item.id ?? item.label));
@@ -53,19 +74,26 @@ export default function App() {
     console.warn('Resultado sem navegação configurada:', item);
   };
 
-  if (!isAuthenticated) return <Login theme={theme} onLoginSuccess={() => setIsAuthenticated(true)} />;
+  if (restaurandoSessao) {
+    return <div className="theme-login min-h-screen w-full bg-slate-950" aria-label="Validando sessão" />;
+  }
+
+  if (!isAuthenticated) return <Login theme={theme} onLoginSuccess={(usuarioAutenticado) => {
+    setUsuario(usuarioAutenticado);
+    setIsAuthenticated(true);
+  }} />;
   const pageKey = normalizar(activePage);
 
   return (
     <div className="theme-app flex min-h-screen font-sans text-slate-100">
       <Sidebar theme={theme} activePage={activePage} setActivePage={setActivePage}
-        onLogout={() => { limparSessao(); setIsAuthenticated(false); setActivePage('Dashboard'); }}
+        onLogout={() => { limparSessao(); setUsuario(null); setIsAuthenticated(false); setActivePage('Dashboard'); }}
         isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <div className="flex min-w-0 flex-1 flex-col bg-transparent">
         <Topbar activePage={activePage} pages={PAGINAS_BUSCA}
           onOpenSettings={() => setShowConfigModal(true)} onOpenProfile={() => setShowProfileModal(true)} onNavigate={navegarPelaBusca} />
         {showConfigModal && <ConfiguracoesSistemaModal theme={theme} onThemeChange={setTheme} onClose={() => setShowConfigModal(false)} />}
-        {showProfileModal && <PerfilModal onClose={() => setShowProfileModal(false)} />}
+        {showProfileModal && <PerfilModal usuario={usuario} onClose={() => setShowProfileModal(false)} />}
         <main className="flex-1 bg-transparent">
           {pageKey === 'dashboard' ? <Dashboard onOpenAlarmes={() => setActivePage('Alarmes')} />
           : pageKey === 'medicoes' ? <Medicao />
