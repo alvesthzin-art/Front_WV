@@ -209,11 +209,7 @@ export default function NovoLimiteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-<<<<<<< HEAD
       <div className="wv-modal-panel relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#141C2B] bg-[#070B15] p-6 text-slate-200 shadow-2xl">
-        <div className="mb-6 flex items-start justify-between"><div><h2 className="text-lg font-medium text-slate-100">{itemEdicao ? 'Editar Limite' : 'Novo Limite'}</h2><p className="mt-0.5 text-xs text-slate-400">Configure uma condição para monitoramento energético.</p></div><button type="button" onClick={onFechar} className="rounded-lg p-1 text-slate-400 hover:bg-[#111B2A] hover:text-slate-200" aria-label="Fechar modal"><X size={18} /></button></div>
-=======
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#141C2B] bg-[#070B15] p-6 text-slate-200 shadow-2xl">
         <div className="mb-6 flex items-start justify-between">
           <div>
             <h2 className="text-lg font-medium text-slate-100">
@@ -239,7 +235,6 @@ export default function NovoLimiteModal({
           </div>
         )}
 
->>>>>>> 0d29116 (Filtros de tela medicao)
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
             <label className="mb-1.5 block font-medium text-slate-300">
