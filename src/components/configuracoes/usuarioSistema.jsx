@@ -5,6 +5,7 @@ import {
   Pencil,
   X,
   Save,
+  Trash2,
 } from 'lucide-react';
 import api from '../../services/api';
 import { redefinirSenhaUsuario } from '../../services/auth';
@@ -160,6 +161,23 @@ const labelClass =
       setMensagem(`Senha redefinida para ${usuario.email}.`);
     } catch (error) {
       setMensagem(error.response?.data?.mensagem || 'Não foi possível redefinir a senha.');
+    }
+  }
+
+  async function excluirUsuario(usuario) {
+    if (usuario.perfil !== 'Gestor') {
+      setMensagem('Somente usuários Gestor podem ser excluídos.');
+      return;
+    }
+
+    if (!window.confirm(`Deseja excluir o usuário ${usuario.nome}?`)) return;
+
+    try {
+      await api.delete(`/usuarios/${usuario.id}`);
+      setUsuarios((atuais) => atuais.filter((item) => item.id !== usuario.id));
+      setMensagem(`Usuário ${usuario.email} removido com sucesso.`);
+    } catch (error) {
+      setMensagem(error.response?.data?.mensagem || 'Não foi possível excluir o usuário.');
     }
   }
 
@@ -388,6 +406,17 @@ const labelClass =
                     >
                       <Save size={14} />
                     </button>
+
+                    {usuario.perfil === 'Gestor' && (
+                      <button
+                        type="button"
+                        onClick={() => excluirUsuario(usuario)}
+                        aria-label={`Excluir ${usuario.nome}`}
+                        className="text-[#C77C7C] hover:text-red-300"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

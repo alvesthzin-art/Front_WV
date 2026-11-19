@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Save, MapPin } from 'lucide-react';
 
 // Pontos iniciais para demonstração.
@@ -34,6 +34,17 @@ const pontosIniciais = [
   },
 ];
 
+const PONTOS_KEY = 'wattvision_pontos_medicao';
+
+function carregarPontos() {
+  try {
+    const armazenados = JSON.parse(localStorage.getItem(PONTOS_KEY) || 'null');
+    return Array.isArray(armazenados) ? armazenados : pontosIniciais;
+  } catch {
+    return pontosIniciais;
+  }
+}
+
 // Estado inicial do formulário.
 const formularioInicial = {
   dispositivo: '',
@@ -43,8 +54,8 @@ const formularioInicial = {
   modelo: 'PZEM-004T V3',
 };
 
-export default function PontosMedicao() {
-  const [pontos, setPontos] = useState(pontosIniciais);
+export default function PontosMedicao({ compacto = false }) {
+  const [pontos, setPontos] = useState(carregarPontos);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [pontoEditando, setPontoEditando] = useState(null);
   const [formulario, setFormulario] = useState(formularioInicial);
@@ -52,6 +63,14 @@ export default function PontosMedicao() {
   // Calcula os totais exibidos no resumo.
   const totalAtivos = pontos.filter((ponto) => ponto.ativo).length;
   const totalInativos = pontos.length - totalAtivos;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PONTOS_KEY, JSON.stringify(pontos));
+    } catch {
+      // Mantém o estado em memória se o armazenamento estiver indisponível.
+    }
+  }, [pontos]);
 
   // Atualiza um campo do formulário.
   function atualizarCampo(event) {
@@ -151,7 +170,7 @@ export default function PontosMedicao() {
   return (
     <div className="flex min-h-0 flex-1 flex-col text-[#C0C5C8]">
       {/* Cabeçalho com os totais e a ação principal */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#202D40] px-5 py-4">
+      {!compacto && <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#202D40] px-5 py-4">
         <div>
           <h3 className="text-base font-semibold text-[#C0C5C8]">
             Pontos de Medição
@@ -173,7 +192,7 @@ export default function PontosMedicao() {
             Novo Ponto
           </button>
         )}
-      </div>
+      </div>}
 
       {/* Área rolável: a altura do modal permanece controlada pelo componente pai */}
       <div className="min-h-0 flex-1 overflow-y-auto p-5">

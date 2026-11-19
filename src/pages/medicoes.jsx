@@ -7,6 +7,7 @@ import CardMedicao from '../components/medicoes/cardMedicao';
 import CardMetaMedicao from '../components/medicoes/cardMetaMedicao';
 import TensaoAoLongoDoTempo from '../components/medicoes/tensaoAoLongoDoTempo';
 import DadosBrutosModal from '../components/medicoes/dadosBrutos';
+import PontosMedicaoModal from '../components/medicoes/pontosMedicaoModal';
 import api from '../services/api';
 
 const HORAS_POR_PERIODO = {
@@ -35,6 +36,7 @@ function extrairLista(res) {
 
 export default function Medicao() {
   const [modalAberto, setModalAberto] = useState(false);
+  const [pontosModalAberto, setPontosModalAberto] = useState(false);
   const [dadosMedicoes, setDadosMedicoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -269,6 +271,7 @@ export default function Medicao() {
           filtros={filtros}
           onFiltrosChange={setFiltros}
           onDefinirMeta={() => setModalAberto(true)}
+          onAbrirPontos={() => setPontosModalAberto(true)}
         />
       </div>
 
@@ -328,6 +331,10 @@ export default function Medicao() {
 
       {modalAberto && (
         <MedicoesAlarmesModal onClose={() => setModalAberto(false)} />
+      )}
+
+      {pontosModalAberto && (
+        <PontosMedicaoModal onClose={() => setPontosModalAberto(false)} />
       )}
     </main>
   );

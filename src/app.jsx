@@ -92,7 +92,7 @@ export default function App() {
       <div className="flex min-w-0 flex-1 flex-col bg-transparent">
         <Topbar activePage={activePage} pages={PAGINAS_BUSCA}
           onOpenSettings={() => setShowConfigModal(true)} onOpenProfile={() => setShowProfileModal(true)} onNavigate={navegarPelaBusca} />
-        {showConfigModal && <ConfiguracoesSistemaModal theme={theme} onThemeChange={setTheme} onClose={() => setShowConfigModal(false)} />}
+        {showConfigModal && <ConfiguracoesSistemaModal usuario={usuario} theme={theme} onThemeChange={setTheme} onClose={() => setShowConfigModal(false)} />}
         {showProfileModal && <PerfilModal usuario={usuario} onClose={() => setShowProfileModal(false)} />}
         <main className="flex-1 bg-transparent">
           {pageKey === 'dashboard' ? <Dashboard onOpenAlarmes={() => setActivePage('Alarmes')} />

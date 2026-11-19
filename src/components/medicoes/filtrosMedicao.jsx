@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
-import { Target } from 'lucide-react';
+import { MapPin, Target } from 'lucide-react';
 
 export default function FiltrosMedicao({
   locais = [],
   setores = [],
   equipamentos = [],
   onDefinirMeta,
+  onAbrirPontos,
   filtros,
   onFiltrosChange,
 }) {
@@ -177,7 +178,7 @@ export default function FiltrosMedicao({
         <div className="hidden h-6 w-px bg-[#263448] xl:block" />
 
         {/* Período, grandeza e botão */}
-        <div className="grid grid-cols-2 items-center gap-2.5 sm:grid-cols-3 xl:flex xl:flex-nowrap xl:flex-1">
+        <div className="grid grid-cols-2 items-center gap-2.5 sm:grid-cols-4 xl:flex xl:flex-nowrap xl:flex-1">
           <label className={`${estiloSelect} flex min-w-0 items-center gap-1.5`}>
             <span className={estiloLabel}>Período:</span>
             <select
@@ -224,6 +225,15 @@ export default function FiltrosMedicao({
           >
             <Target size={15} />
             Definir Meta
+          </button>
+
+          <button
+            type="button"
+            onClick={onAbrirPontos}
+            className="wv-pontos-trigger col-span-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#3768C5] bg-[#101E36] px-3.5 py-2.5 text-xs font-semibold text-[#8EB5FF] transition hover:bg-[#193564] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#5A8F97] sm:col-span-1 xl:w-auto xl:shrink-0"
+          >
+            <MapPin size={15} />
+            Pontos de Medição
           </button>
         </div>
       </div>

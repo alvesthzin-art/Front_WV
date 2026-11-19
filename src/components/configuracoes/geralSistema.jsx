@@ -20,7 +20,7 @@ export function GeralSistema({
           </h3>
 
           <p className="mt-1 text-[11px] text-[#647184]">
-            Identificação e preferências regionais do Watt Vision
+            Identificação do Watt Vision
           </p>
         </div>
       </div>
@@ -41,68 +41,6 @@ export function GeralSistema({
             }
             placeholder="Nome da empresa"
           />
-        </div>
-
-        <div>
-          <label className={labelClass} htmlFor="fuso">
-            Fuso horário
-          </label>
-
-          <select
-            id="fuso"
-            className={inputClass}
-            value={settings.fusoHorario}
-            onChange={(event) =>
-              updateSetting('fusoHorario', event.target.value)
-            }
-          >
-            <option value="America/Sao_Paulo">
-              America/Sao_Paulo
-            </option>
-            <option value="America/Manaus">
-              America/Manaus
-            </option>
-            <option value="America/Belem">
-              America/Belem
-            </option>
-            <option value="America/Fortaleza">
-              America/Fortaleza
-            </option>
-            <option value="America/Rio_Branco">
-              America/Rio_Branco
-            </option>
-          </select>
-        </div>
-
-        <div>
-          <span className={labelClass}>Formato de data</span>
-
-          <div className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-[#070A15] p-1">
-            {[
-              'DD/MM/YYYY',
-              'MM/DD/YYYY',
-              'YYYY-MM-DD',
-            ].map((format) => {
-              const selected = settings.formatoData === format;
-
-              return (
-                <button
-                  key={format}
-                  type="button"
-                  onClick={() =>
-                    updateSetting('formatoData', format)
-                  }
-                  className={`rounded-lg border px-1 py-3 text-[10px] font-medium transition sm:text-[11px] ${
-                    selected
-                      ? 'border-[#3768C5]/50 bg-[#193564] text-[#C0CFE8]'
-                      : 'border-transparent text-[#596474] hover:text-[#C0C5C8]'
-                  }`}
-                >
-                  {format}
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         <div>

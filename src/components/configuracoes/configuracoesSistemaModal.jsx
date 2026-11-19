@@ -1,20 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { UsuariosSistema } from './usuarioSistema.jsx';
-import { TarifasSistema } from './tarifasSistema.jsx';
 import { GeralSistema } from './geralSistema.jsx';
-import PontosMedicao from "./pontosMedicao.jsx";
 import {
   X,
   Settings,
-  Zap,
   Users,
-  MapPin,
-  Building2,
   Monitor,
   Save,
-  Plus,
-  Pencil,
-  Trash2,
 } from 'lucide-react';
 
 /*
@@ -37,9 +29,7 @@ import {
 
 const tabs = [
   { id: 'geral', label: 'Geral', icon: Settings },
-  { id: 'tarifas', label: 'Tarifas', icon: Zap },
   { id: 'usuarios', label: 'Usuários', icon: Users },
-  { id: 'pontos', label: 'Pontos de Medição', icon: MapPin },
 ];
 
 /*
@@ -50,22 +40,30 @@ const tabs = [
 | Estes valores aparecem quando o modal é inicializado.
 |
 | nomeEmpresa = nome inicial da empresa.
-| fusoHorario = fuso horário selecionado inicialmente.
-| formatoData = formato de data selecionado inicialmente.
-|
 | Para alterar os valores iniciais, modifique os valores abaixo.
 |
 | ATENÇÃO:
-| Estes valores não são carregados de um banco de dados.
-| Também não são armazenados permanentemente nesta implementação.
+| Estes valores são preferências da interface e ficam persistidos
+| no navegador para serem reaproveitados quando o modal for reaberto.
 |
 */
 
 const initialSettings = {
   nomeEmpresa: 'Watt Vision',
-  fusoHorario: 'America/Sao_Paulo',
-  formatoData: 'DD/MM/YYYY',
 };
+
+const SETTINGS_KEY = 'wattvision_settings';
+
+function carregarConfiguracoes() {
+  try {
+    const armazenadas = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null');
+    return armazenadas && typeof armazenadas === 'object'
+      ? { nomeEmpresa: armazenadas.nomeEmpresa || initialSettings.nomeEmpresa }
+      : initialSettings;
+  } catch {
+    return initialSettings;
+  }
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -85,7 +83,7 @@ const initialSettings = {
 |
 */
 
-export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChange }) {
+export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChange, usuario }) {
 
   /*
   | activeTab controla qual aba está aberta.
@@ -101,178 +99,18 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
   | Quando o usuário altera um campo, chamamos setSettings
   | para atualizar o estado e refletir a mudança na interface.
   */
-  const [settings, setSettings] = useState(initialSettings);
+  const [settings, setSettings] = useState(carregarConfiguracoes);
   const [temaSelecionado, setTemaSelecionado] = useState(theme);
 
   /*
-  | saved guarda os valores considerados salvos nesta instância.
-  |
-  | IMPORTANTE:
-  | Como o componente é fechado e desmontado, esta cópia local
-  | não garante que os dados permaneçam disponíveis ao reabrir.
-  | Para isso, será necessário um estado persistente ou backend.
+  | saved guarda os últimos valores confirmados para o botão Cancelar.
   */
-  const [saved, setSaved] = useState(initialSettings);
+  const [saved, setSaved] = useState(carregarConfiguracoes);
 
-  const [mostrarFormularioTarifa, setMostrarFormularioTarifa] = useState(false);
-
-  const [formTarifa, setFormTarifa] = useState({
-    descricao: '',
-    valor: '0',
-    ativa: false,
-    inicio: '',
-    fim: '',
-  });
-  // Tarifas cadastradas no sistema.
-  // Estes dados são exemplos e ficam apenas na memória do componente.
-  const [tarifas, setTarifas] = useState([
-    {
-      id: 1,
-      descricao: 'Tarifa 2026 — Convencional',
-      valor: 0.80,
-      inicio: '2026-01-01',
-      fim: '',
-      ativa: true,
-    },
-    {
-      id: 2,
-      descricao: 'Tarifa 2027 (futura, prevista)',
-      valor: 0.87,
-      inicio: '2027-01-01',
-      fim: '',
-      ativa: false,
-    },
-  ]);
-  //const [mostrarFormularioTarifa, setMostrarFormularioTarifa] = useState(false);
-
-
-  // Formata os valores para o padrão brasileiro: R$ 0,80.
-  const formatarValor = (valor) =>
-    Number(valor).toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    });
-
-  // Converte a data ISO para DD/MM/AAAA.
-  const formatarData = (data) => {
-    if (!data) return 'atual';
-
-    const [ano, mes, dia] = data.split('-');
-    return `${dia}/${mes}/${ano}`;
-  };
-
-  // Cadastra uma nova tarifa usando caixas de diálogo simples.
-  // Abre o formulário de nova tarifa.
-  const adicionarTarifa = () => {
-    setFormTarifa({
-      descricao: '',
-      valor: '0',
-      ativa: false,
-      inicio: '',
-      fim: '',
-    });
-
-    setMostrarFormularioTarifa(true);
-  };
-
-  // Fecha o formulário sem cadastrar.
-  const cancelarFormularioTarifa = () => {
-    setMostrarFormularioTarifa(false);
-  };
-
-  // Valida e salva a nova tarifa na lista.
-  const salvarNovaTarifa = (event) => {
-    event.preventDefault();
-
-    const valor = Number(
-      String(formTarifa.valor).replace(',', '.')
-    );
-
-    if (!formTarifa.descricao.trim()) {
-      window.alert('Informe a descrição da tarifa.');
-      return;
-    }
-
-    if (!Number.isFinite(valor) || valor < 0) {
-      window.alert('Informe um valor válido.');
-      return;
-    }
-
-    if (!formTarifa.inicio) {
-      window.alert('Informe a data inicial.');
-      return;
-    }
-
-    if (formTarifa.fim && formTarifa.fim < formTarifa.inicio) {
-      window.alert('A data final não pode ser anterior à data inicial.');
-      return;
-    }
-
-    setTarifas((atuais) => [
-      ...atuais,
-      {
-        id: Date.now(),
-        descricao: formTarifa.descricao.trim(),
-        valor,
-        inicio: formTarifa.inicio,
-        fim: formTarifa.fim,
-        ativa: formTarifa.ativa,
-      },
-    ]);
-
-    setMostrarFormularioTarifa(false);
-  };
-
-  // Permite alterar a descrição, o valor e a data de início.
-  const editarTarifa = (tarifa) => {
-    const descricao = window.prompt('Descrição:', tarifa.descricao);
-    if (!descricao?.trim()) return;
-
-    const valorInformado = window.prompt(
-      'Valor por kWh:',
-      String(tarifa.valor).replace('.', ',')
-    );
-
-    if (valorInformado === null) return;
-
-    const valor = Number(valorInformado.replace(',', '.'));
-
-    if (!Number.isFinite(valor) || valor < 0) {
-      window.alert('Informe um valor válido.');
-      return;
-    }
-
-    const inicio = window.prompt(
-      'Data de início (AAAA-MM-DD):',
-      tarifa.inicio
-    );
-
-    if (!inicio || !/^\d{4}-\d{2}-\d{2}$/.test(inicio)) {
-      window.alert('Informe uma data válida.');
-      return;
-    }
-
-    setTarifas((atuais) =>
-      atuais.map((item) =>
-        item.id === tarifa.id
-          ? { ...item, descricao: descricao.trim(), valor, inicio }
-          : item
-      )
-    );
-  };
-
-  // Exclui a tarifa somente após confirmação.
-  const excluirTarifa = (id) => {
-    const confirmar = window.confirm(
-      'Deseja realmente excluir esta tarifa?'
-    );
-
-    if (confirmar) {
-      setTarifas((atuais) =>
-        atuais.filter((tarifa) => tarifa.id !== id)
-      );
-    }
-  };
+  const isAdministrador = usuario?.perfil === 'Administrador';
+  const tabsDisponiveis = isAdministrador
+    ? tabs
+    : tabs.filter((tab) => tab.id === 'geral');
   /*
   |--------------------------------------------------------------------------
   | 4. FECHAR O MODAL COM A TECLA ESC
@@ -352,17 +190,18 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
   | 7. BOTÃO SALVAR ALTERAÇÕES
   |--------------------------------------------------------------------------
   |
-  | Atualiza a cópia local e fecha o modal.
-  |
-  | ATENÇÃO:
-  | Esta função não envia dados para uma API ou banco de dados.
-  | Para salvar permanentemente, será necessário integrar
-  | o componente a um serviço de persistência.
+  | Persiste as preferências gerais e aplica o tema somente após
+  | o usuário confirmar em Salvar Alterações.
   |
   */
 
   const saveChanges = () => {
     setSaved(settings);
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      // A tela continua funcionando mesmo sem armazenamento local disponível.
+    }
     onThemeChange?.(temaSelecionado);
     onClose();
   };
@@ -459,7 +298,9 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
             </h2>
 
             <p className="mt-1 text-xs text-[#8F9AA8]">
-              Informações gerais, tarifas e preferências
+              {isAdministrador
+                ? 'Preferências gerais e gerenciamento de usuários'
+                : 'Preferências gerais do sistema'}
             </p>
           </div>
 
@@ -494,7 +335,7 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
           aria-label="Seções das configurações"
           className="flex shrink-0 gap-1 overflow-x-auto border-b border-[#17315F55] bg-[#0B1320] px-3 sm:px-5"
         >
-          {tabs.map((tab) => {
+          {tabsDisponiveis.map((tab) => {
             // Seleciona o componente de ícone da aba atual.
             const Icon = tab.icon;
 
@@ -634,19 +475,7 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
 
           {/*
           |--------------------------------------------------------------------------
-          | 13.2. COMPONENTE TARIFAS 
-          |--------------------------------------------------------------------------
-          |
-          | Área reservada para o gerenciamento de Tarifas e permissões.
-          | Chama o import que tem o caminho da componente Tarifas.
-          |
-          */}
-
-          {activeTab === 'tarifas' && <TarifasSistema />}
-
-          {/*
-          |--------------------------------------------------------------------------
-          | 13.3. COMPONENTE USUÁRIOS 
+          | 13.2. COMPONENTE USUÁRIOS
           |--------------------------------------------------------------------------
           |
           | Área reservada para o gerenciamento de usuários e permissões.
@@ -660,14 +489,13 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
 
           {/*
           |--------------------------------------------------------------------------
-          | 13.4. COMPONENTE PONTOS DE MEDIÇÃO
+          | 13.3. COMPONENTE PONTOS DE MEDIÇÃO
           |--------------------------------------------------------------------------
           |
           | Área reservada para o gerenciamento de Ponto de Medição e permissões.
           | Chama o import que tem o caminho da componente Ponto de Medição.
            */}
           
-          {activeTab === 'pontos' && <PontosMedicao />}
           </div>
 
          
@@ -687,7 +515,6 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
         |
         */}
 
-         {activeTab !== 'pontos' && (
           <footer className="flex shrink-0 flex-col-reverse gap-3 border-t border-[#26354B] bg-[#0D1523] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <button
               type="button"
@@ -706,7 +533,6 @@ export function ConfiguracoesSistemaModal({ onClose, theme = 'dark', onThemeChan
               Salvar Alterações
             </button>
           </footer>
-        )}
       </section>
     </div>
   );
