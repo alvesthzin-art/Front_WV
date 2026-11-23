@@ -4,6 +4,7 @@ import { Sidebar } from './components/layout/sidebar';
 import { Topbar } from './components/layout/topbar';
 import ConfiguracoesSistemaModal from './components/configuracoes/configuracoesSistemaModal';
 import PerfilModal from './components/layout/perfilModal';
+import RedefinirSenha from './pages/redefinirSenha';
 import Dashboard from './pages/dashboard';
 import Medicao from './pages/medicoes';
 import Operacional from './pages/operacional';
@@ -33,6 +34,7 @@ const normalizar = (valor) =>
 const THEME_KEY = 'wattvision_theme';
 
 export default function App() {
+  const resetToken = new URLSearchParams(window.location.search).get('resetToken');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [usuario, setUsuario] = useState(null);
   const [restaurandoSessao, setRestaurandoSessao] = useState(true);
@@ -78,6 +80,8 @@ export default function App() {
       montado = false;
     };
   }, []);
+
+  if (resetToken) return <RedefinirSenha token={resetToken} />;
 
   const navegarPelaBusca = (item) => {
     if (!item) return;
