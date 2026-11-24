@@ -44,7 +44,7 @@ function DispositivoFormModal({
   const estadoInicial = {
     nome: '',
     id: '',
-    modelo: 'ESP32-DevKitC',
+    modelo: '',
     numeroSerie: '',
     macAddress: '',
     firmware: 'v1.0.0',
@@ -211,8 +211,11 @@ function DispositivoFormModal({
         dataInstalacao: new Date().toISOString().split('T')[0],
       });
     }
+    // Os catálogos são atualizados periodicamente pela tela pai. Eles não
+    // podem fazer o formulário ser reinicializado enquanto o usuário digita.
+    // A inicialização deve acontecer somente ao abrir/trocar o dispositivo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispositivoParaEditar, isOpen, locais, setores, equipamentos]);
+  }, [dispositivoParaEditar, isOpen]);
 
   if (!isOpen) return null;
 

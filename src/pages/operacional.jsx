@@ -633,6 +633,7 @@ export default function Operacional({
           tipo={abaAtiva} 
           itemInicial={itemEmEdicao}
           locais={locais}
+          setores={setores}
           onClose={() => { setModalAberto(false); setItemEmEdicao(null); }}
           onSalvar={handleSalvarNovo} 
         />
