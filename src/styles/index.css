@@ -691,6 +691,22 @@ html[data-theme='light'] .wv-pagination-inactive:hover {
   transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
 }
 
+html[data-theme='light'] .theme-app button.wv-report-auto-scale {
+  background-color: #dbeafe !important;
+  border-color: #93c5fd !important;
+  color: #1e3a8a !important;
+  font-weight: 600;
+}
+
+html[data-theme='light'] .theme-app button.wv-report-auto-scale:hover {
+  background-color: #bfdbfe !important;
+}
+
+html[data-theme='light'] .theme-app button.wv-report-auto-scale:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 html[data-theme='light'] .wv-dashboard-chart {
   background: #ffffff !important;
   border-color: #cbd8e7 !important;

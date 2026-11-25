@@ -7,13 +7,16 @@ import RecentAlarms from '../components/dashboard/recentAlarms';
 import IndicadoresEnergeticos from '../components/dashboard/indicadoresEnergeticos';
 import CalculoButton from "../components/dashboard/calculoButton";
 import api from '../services/api';
+import { converterTarifaEnergia, lerTarifaEnergia } from '../services/tarifaEnergia';
 import { listarAlarmes } from '../services/alarmes';
 
-const HORAS_POR_PERIODO = {
-  Hoje: 24,
-  '6 horas': 6,
-  Ontem: 48,
-};
+import {
+  calcularIndicadoresGrandeza,
+  buscarIndicadoresEnergeticos,
+  calcularConsumoMedido,
+  horarioMedicao,
+  obterPeriodosEnergeticos,
+} from '../services/indicadoresEnergeticos';
 
 const OPCOES_PADRAO = {
   periodo: ['Hoje', '6 horas', 'Ontem'],
@@ -42,7 +45,8 @@ function Dashboard({ onOpenAlarmes }) {
   const [erro, setErro] = useState('');
   const [alarmesIndisponiveis, setAlarmesIndisponiveis] = useState(false);
   const [dadosMedicoes, setDadosMedicoes] = useState([]);
-  const [idsPzem, setIdsPzem] = useState([]);
+  const [medidores, setMedidores] = useState([]);
+  const [indicadores, setIndicadores] = useState(null);
 
   // Estados dos filtros destacados na tela
   const [filtroPeriodo, setFiltroPeriodo] = useState('Hoje');
@@ -61,6 +65,8 @@ function Dashboard({ onOpenAlarmes }) {
     grandeza: filtroGrandeza,
   };
 
+  const chaveIndicadores = JSON.stringify([filtroPeriodo, filtroLocal, filtroSetor, filtroEquipamento, filtroGrandeza]);
+
   const setFiltros = (atualizar) => {
     const novosFiltros = atualizar(filtros);
     setFiltroPeriodo(novosFiltros.periodo);
@@ -74,10 +80,11 @@ function Dashboard({ onOpenAlarmes }) {
     let ativo = true;
 
     async function carregarOpcoes() {
-      const [resLocais, resSetores, resEquipamentos, resPzems] = await Promise.all([
+      const [resLocais, resSetores, resEquipamentos, resPontos, resPzems] = await Promise.all([
         api.get('/locais').catch(() => ({ data: [] })),
         api.get('/setores').catch(() => ({ data: [] })),
         api.get('/equipamentos').catch(() => ({ data: [] })),
+        api.get('/pontos-medicao').catch(() => ({ data: [] })),
         api.get('/pzems').catch(() => ({ data: [] })),
       ]);
 
@@ -85,18 +92,25 @@ function Dashboard({ onOpenAlarmes }) {
 
       const locais = nomesDasOpcoes(extrairLista(resLocais, ['dados', 'locais']));
       const setores = nomesDasOpcoes(extrairLista(resSetores, ['dados', 'setores']));
-      const equipamentos = nomesDasOpcoes(extrairLista(resEquipamentos, ['dados', 'equipamentos']));
+      const equipamentos = extrairLista(resEquipamentos, ['dados', 'equipamentos']);
+      const idsEquipamentos = new Set(equipamentos
+        .map((item) => Number(item.id ?? item.id_equipamento))
+        .filter((id) => id > 0));
+      const pontosVinculados = new Set(extrairLista(resPontos, ['dados', 'pontos'])
+        .filter((ponto) => idsEquipamentos.has(Number(ponto.id_equipamento)))
+        .map((ponto) => Number(ponto.id)));
       const pzems = extrairLista(resPzems, ['dados', 'pzems']);
-      setIdsPzem([...new Set(pzems
-        .filter((pzem) => String(pzem.status || 'Ativo').toLowerCase() === 'ativo')
-        .map((pzem) => Number(pzem.id))
-        .filter(Boolean))]);
+      setMedidores([...new Map(pzems
+        .filter((pzem) => String(pzem.status || 'Ativo').toLowerCase() === 'ativo'
+          && Number(pzem.id) > 0
+          && pontosVinculados.has(Number(pzem.id_ponto_medicao)))
+        .map((pzem) => [Number(pzem.id), { ...pzem, id: Number(pzem.id) }])).values()]);
 
       setOpcoesFiltros((atuais) => ({
         ...atuais,
         local: ['Todos', ...new Set(locais)],
         setor: ['Todos', ...new Set(setores)],
-        equipamento: ['Todos', ...new Set(equipamentos)],
+        equipamento: ['Todos', ...new Set(nomesDasOpcoes(equipamentos))],
       }));
     }
 
@@ -112,8 +126,9 @@ function Dashboard({ onOpenAlarmes }) {
       if (emAndamento) return;
       emAndamento = true;
       try {
+        const periodo = obterPeriodosEnergeticos(filtroPeriodo);
         const parametrosReq = {
-          horas: HORAS_POR_PERIODO[filtroPeriodo] || 24,
+          horas: Math.ceil((Date.now() - periodo.anterior) / 3600000) + 1,
           local: filtroLocal !== 'Todos' ? filtroLocal : undefined,
           setor: filtroSetor !== 'Todos' ? filtroSetor : undefined,
           equipamento: filtroEquipamento !== 'Todos' ? filtroEquipamento : undefined,
@@ -123,23 +138,41 @@ function Dashboard({ onOpenAlarmes }) {
         const resultados = await Promise.allSettled([
           api.get('/equipamentos', config),
           listarAlarmes(controller.signal),
-          ...idsPzem.map((idPzem) => api.get('/medicoes/serie-temporal', {
+          medidores.length
+            ? buscarIndicadoresEnergeticos(filtroPeriodo, periodo, parametrosReq, controller.signal)
+            : null,
+          ...medidores.map(({ id }) => api.get('/medicoes/serie-temporal', {
             ...config,
-            params: { ...parametrosReq, id_pzem: idPzem },
+            params: { ...parametrosReq, id_pzem: id },
           })),
         ]);
         if (controller.signal.aborted) return;
 
-        const [equipamentosResult, alertasResult, ...medicoesResultados] = resultados;
+        const [equipamentosResult, alertasResult, indicadoresResult, ...medicoesResultados] = resultados;
         const resEquipamentos = equipamentosResult.status === 'fulfilled' ? equipamentosResult.value : null;
         const resAlertas = alertasResult.status === 'fulfilled' ? alertasResult.value : null;
         const equipamentos = extrairLista(resEquipamentos, ['dados', 'equipamentos']);
         const alarmes = resAlertas ?? [];
-        const medicoes = medicoesResultados
-          .filter((resultado) => resultado.status === 'fulfilled')
-          .flatMap((resultado) => extrairLista(resultado.value, ['dados']))
-          .filter(item => Number.isFinite(new Date(String(item.data_hora ?? '').replace(' ', 'T')).getTime()))
-          .sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora));
+        const series = medicoesResultados.flatMap((resultado, indice) =>
+          resultado.status === 'fulfilled'
+            ? [{ medidor: medidores[indice], dados: extrairLista(resultado.value, ['dados']) }]
+            : [],
+        );
+        const incompleto = medicoesResultados.length !== series.length
+          || series.some(({ dados }) => dados.length >= 10000);
+        for (const serie of series) {
+          serie.dados = serie.dados.filter((item) =>
+            Number(item.id_ponto_medicao) === Number(serie.medidor.id_ponto_medicao),
+          );
+        }
+        const medicoes = series.flatMap(({ dados }) => dados)
+          .filter((item) => {
+            const hora = horarioMedicao(item);
+            return hora >= periodo.inicio && hora < periodo.fim;
+          })
+          .sort((a, b) => horarioMedicao(a) - horarioMedicao(b));
+
+
         const ultima = medicoes.at(-1);
         const normalizar = valor => String(valor ?? '').toLowerCase();
         const valorMedido = (valor, casas, unidade) =>
@@ -159,17 +192,35 @@ function Dashboard({ onOpenAlarmes }) {
             valorMedido(ultima?.fator_potencia ?? ultima?.fator_de_potencia, 2, ''),
           ][index],
         })));
-        setErro(idsPzem.length === 0
-          ? 'Nenhum dispositivo cadastrado para carregar medições.'
+        setErro(medidores.length === 0
+          ? 'Vincule um PZEM ativo a um equipamento cadastrado para visualizar as medições.'
           : medicoesResultados.every((resultado) => resultado.status === 'rejected')
             ? 'Não foi possível atualizar as medições. Nova tentativa em alguns segundos.'
             : '');
-        setAtualizadoEm(idsPzem.length > 0
+        setAtualizadoEm(medidores.length > 0
           ? new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
           : '');
+        const grandeza = !incompleto && filtroGrandeza !== 'Energia'
+          ? calcularIndicadoresGrandeza(series, periodo, filtroGrandeza)
+          : null;
+        const consumoMedido = incompleto ? null : calcularConsumoMedido(series, periodo);
+        const tarifaKwh = converterTarifaEnergia(lerTarifaEnergia());
+        setIndicadores({
+          custoEstimado: consumoMedido === null ? null : consumoMedido * tarifaKwh,
+          tarifaKwh,
+          energia: indicadoresResult.status === 'fulfilled' ? indicadoresResult.value : null,
+          erroEnergia: indicadoresResult.status === 'rejected'
+            ? indicadoresResult.reason?.response?.data?.mensagem
+              || 'Não foi possível consultar os indicadores de energia.'
+            : null,
+          chave: chaveIndicadores,
+          incompleto,
+          grandeza,
+        });
       } catch {
         if (controller.signal.aborted) return;
         setErro('Não foi possível atualizar o dashboard. Tentaremos novamente em alguns segundos.');
+        setIndicadores({ chave: chaveIndicadores, incompleto: true });
         setDadosMedicoes([]);
         setAlertas([]);
         setAlarmesIndisponiveis(true);
@@ -186,7 +237,7 @@ function Dashboard({ onOpenAlarmes }) {
       controller.abort();
       clearInterval(intervalo);
     };
-  }, [filtroPeriodo, filtroLocal, filtroSetor, filtroEquipamento, filtroGrandeza, idsPzem]);
+  }, [filtroPeriodo, filtroLocal, filtroSetor, filtroEquipamento, filtroGrandeza, medidores, chaveIndicadores]);
 
   return (
     <main className="min-h-screen p-6 text-slate-200 md:p-8 bg-transparent">
@@ -220,7 +271,11 @@ function Dashboard({ onOpenAlarmes }) {
       </section>
 
       <section className="mt-4">
-        <IndicadoresEnergeticos periodo={filtroPeriodo} />
+        <IndicadoresEnergeticos
+          periodo={filtroPeriodo}
+          grandeza={filtroGrandeza}
+          dados={indicadores?.chave === chaveIndicadores ? indicadores : null}
+        />
       </section>
     </main>
   );

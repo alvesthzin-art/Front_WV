@@ -8,14 +8,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 
-const CONFIGURACAO_GRANDEZA = {
-  Tensão: { keys: ['tensao'], unit: 'V', label: 'Tensão (V)', color: '#6366f1' },
-  Corrente: { keys: ['corrente'], unit: 'A', label: 'Corrente (A)', color: '#f59e0b' },
-  Potência: { keys: ['potencia_ativa', 'potencia'], unit: 'W', label: 'Potência (W)', color: '#10b981' },
-  Energia: { keys: ['energia_acumulada', 'energia'], unit: 'kWh', label: 'Energia (kWh)', color: '#3b82f6' },
-  Frequência: { keys: ['frequencia', 'frequência', 'frequencia_rede'], unit: 'Hz', label: 'Frequência (Hz)', color: '#a855f7' },
-  'Fator de potência': { keys: ['fator_potencia', 'fator_de_potencia'], unit: '', label: 'Fator de potência', color: '#f97316' },
-};
+import { CONFIGURACAO_GRANDEZA } from '../../services/indicadoresEnergeticos';
 
 const MAXIMO_PONTOS_GRAFICO = 24;
 
@@ -43,13 +36,22 @@ export default function SystemPerformance({ dados = [], grandeza = 'Tensão', pe
   }).filter((item) => item.valor !== null);
   const chartData = reduzirPontos(chartDataCompleto);
 
-  const valores = chartData.map((item) => item.valor);
-  const menorValor = valores.length ? Math.min(...valores) : 0;
-  const maiorValor = valores.length ? Math.max(...valores) : 1;
-  const margem = menorValor === maiorValor
-    ? Math.max(Math.abs(menorValor) * 0.1, 1)
-    : (maiorValor - menorValor) * 0.1;
-  const dominioY = [menorValor - margem, maiorValor + margem];
+  // Configuração específica para o Eixo Y quando for Tensão
+  let dominioY;
+  let ticksY = undefined;
+
+  if (grandeza === 'Tensão') {
+    dominioY = [0, 400];
+    ticksY = [0, 110, 127, 220, 380];
+  } else {
+    const valores = chartData.map((item) => item.valor);
+    const menorValor = valores.length ? Math.min(...valores) : 0;
+    const maiorValor = valores.length ? Math.max(...valores) : 1;
+    const margem = menorValor === maiorValor
+      ? Math.max(Math.abs(menorValor) * 0.1, 1)
+      : (maiorValor - menorValor) * 0.1;
+    dominioY = [menorValor - margem, maiorValor + margem];
+  }
 
   return (
     <div className="wv-dashboard-chart rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg backdrop-blur-sm">
@@ -92,6 +94,7 @@ export default function SystemPerformance({ dados = [], grandeza = 'Tensão', pe
               />
               <YAxis
                 domain={dominioY}
+                ticks={ticksY}
                 stroke={temaClaro ? '#64748b' : '#64748b'}
                 fontSize={11}
                 tickLine={false}

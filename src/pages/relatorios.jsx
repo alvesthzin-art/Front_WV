@@ -1,3 +1,4 @@
+import { converterTarifaEnergia, lerTarifaEnergia, salvarTarifaEnergia } from '../services/tarifaEnergia';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownRight,
@@ -241,15 +242,12 @@ function formatarEixo(valor, nome) {
 }
 
 export default function Relatorios() {
-  const [tarifaTexto, setTarifaTexto] = useState(() => {
-    try { return localStorage.getItem('wattvision_tarifa') ?? '0.80'; }
-    catch { return '0.80'; }
-  });
-  const tarifaKwh = Math.max(0, Number(tarifaTexto.replace(',', '.')) || 0);
+  const [tarifaTexto, setTarifaTexto] = useState(lerTarifaEnergia)
+  const tarifaKwh = converterTarifaEnergia(tarifaTexto);
   const atualizarTarifa = (texto) => {
     if (!/^\d*[.,]?\d*$/.test(texto)) return;
     setTarifaTexto(texto);
-    try { localStorage.setItem('wattvision_tarifa', texto); } catch { /* storage indisponível */ }
+    salvarTarifaEnergia(texto);
   };
 
   const [limitesManuais, setLimitesManuais] = useState({});
@@ -576,7 +574,7 @@ export default function Relatorios() {
                       />
                     </label>
                   ))}
-                  <button type="button" onClick={() => restaurarEscala(itemMetrica.nome)} className="rounded-lg border border-[#34445B] px-3 py-2 text-xs text-blue-300 transition hover:bg-blue-500/10">Automático</button>
+                  <button type="button" onClick={() => restaurarEscala(itemMetrica.nome)} className="wv-report-auto-scale rounded-lg border border-[#34445B] px-3 py-2 text-xs text-blue-300 transition hover:bg-blue-500/10">Automático</button>
                   {!limitesValidos && <span className="w-full text-xs text-rose-400">O mínimo deve ser menor que o máximo{itemMetrica.nome === 'Fator de potência' ? ' (entre 0 e 1)' : ''}. Usando escala automática.</span>}
                 </div>
                 <div className="h-[250px] w-full min-w-0">
