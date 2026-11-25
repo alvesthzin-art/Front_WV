@@ -12,7 +12,10 @@ import {
 import NovoOperacionalModal from '../components/operacional/NovoOperacionalModal';
 import api from '../services/api';
 
-export default function Operacional() {
+export default function Operacional({
+  equipamentoInicial = null,
+  onLimparEquipamentoInicial,
+}) {
   const [abaAtiva, setAbaAtiva] = useState('Equipamentos');
   const [pesquisa, setPesquisa] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('Todos');
@@ -82,6 +85,37 @@ export default function Operacional() {
     setEquipamentoSelecionado(item);
     setFormEdicao({ ...item });
   };
+
+  // Abre automaticamente o equipamento vindo do botão "Ver Equipamento" no modal de Alarmes
+  useEffect(() => {
+    if (!equipamentoInicial || equipamentos.length === 0) return;
+
+    const idAlvo = Number(equipamentoInicial.id_equipamento || equipamentoInicial.id);
+    const nomeAlvo = (equipamentoInicial.nome || '').trim().toLowerCase();
+
+    const encontrado = equipamentos.find((eq) => {
+      if (idAlvo && Number(eq.id_equipamento || eq.id) === idAlvo) {
+        return true;
+      }
+      if (
+        nomeAlvo &&
+        (eq.nome || eq.equipamento || '').trim().toLowerCase().includes(nomeAlvo)
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    if (encontrado) {
+      setAbaAtiva('Equipamentos');
+      handleSelecionarEquipamento(encontrado);
+    } else if (nomeAlvo) {
+      setAbaAtiva('Equipamentos');
+      setPesquisa(equipamentoInicial.nome);
+    }
+
+    onLimparEquipamentoInicial?.();
+  }, [equipamentoInicial, equipamentos, onLimparEquipamentoInicial]);
 
   const handleSelecionarItemOperacional = (item) => {
     if (abaAtiva === 'Equipamentos') {
@@ -599,6 +633,7 @@ export default function Operacional() {
           tipo={abaAtiva} 
           itemInicial={itemEmEdicao}
           locais={locais}
+          setores={setores}
           onClose={() => { setModalAberto(false); setItemEmEdicao(null); }}
           onSalvar={handleSalvarNovo} 
         />

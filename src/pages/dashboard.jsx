@@ -42,6 +42,7 @@ function Dashboard({ onOpenAlarmes }) {
   const [erro, setErro] = useState('');
   const [alarmesIndisponiveis, setAlarmesIndisponiveis] = useState(false);
   const [dadosMedicoes, setDadosMedicoes] = useState([]);
+  const [idsPzem, setIdsPzem] = useState([]);
 
   // Estados dos filtros destacados na tela
   const [filtroPeriodo, setFiltroPeriodo] = useState('Hoje');
@@ -73,10 +74,11 @@ function Dashboard({ onOpenAlarmes }) {
     let ativo = true;
 
     async function carregarOpcoes() {
-      const [resLocais, resSetores, resEquipamentos] = await Promise.all([
+      const [resLocais, resSetores, resEquipamentos, resPzems] = await Promise.all([
         api.get('/locais').catch(() => ({ data: [] })),
         api.get('/setores').catch(() => ({ data: [] })),
         api.get('/equipamentos').catch(() => ({ data: [] })),
+        api.get('/pzems').catch(() => ({ data: [] })),
       ]);
 
       if (!ativo) return;
@@ -84,6 +86,11 @@ function Dashboard({ onOpenAlarmes }) {
       const locais = nomesDasOpcoes(extrairLista(resLocais, ['dados', 'locais']));
       const setores = nomesDasOpcoes(extrairLista(resSetores, ['dados', 'setores']));
       const equipamentos = nomesDasOpcoes(extrairLista(resEquipamentos, ['dados', 'equipamentos']));
+      const pzems = extrairLista(resPzems, ['dados', 'pzems']);
+      setIdsPzem([...new Set(pzems
+        .filter((pzem) => String(pzem.status || 'Ativo').toLowerCase() === 'ativo')
+        .map((pzem) => Number(pzem.id))
+        .filter(Boolean))]);
 
       setOpcoesFiltros((atuais) => ({
         ...atuais,
@@ -111,23 +118,26 @@ function Dashboard({ onOpenAlarmes }) {
           setor: filtroSetor !== 'Todos' ? filtroSetor : undefined,
           equipamento: filtroEquipamento !== 'Todos' ? filtroEquipamento : undefined,
           grandeza: filtroGrandeza,
-          id_pzem: 1,
         };
         const config = { signal: controller.signal };
         const resultados = await Promise.allSettled([
           api.get('/equipamentos', config),
           listarAlarmes(controller.signal),
-          api.get('/medicoes/serie-temporal', { ...config, params: parametrosReq }),
+          ...idsPzem.map((idPzem) => api.get('/medicoes/serie-temporal', {
+            ...config,
+            params: { ...parametrosReq, id_pzem: idPzem },
+          })),
         ]);
         if (controller.signal.aborted) return;
 
-        const [equipamentosResult, alertasResult, medicoesResult] = resultados;
+        const [equipamentosResult, alertasResult, ...medicoesResultados] = resultados;
         const resEquipamentos = equipamentosResult.status === 'fulfilled' ? equipamentosResult.value : null;
         const resAlertas = alertasResult.status === 'fulfilled' ? alertasResult.value : null;
-        const resMedicoes = medicoesResult.status === 'fulfilled' ? medicoesResult.value : null;
         const equipamentos = extrairLista(resEquipamentos, ['dados', 'equipamentos']);
         const alarmes = resAlertas ?? [];
-        const medicoes = extrairLista(resMedicoes, ['dados'])
+        const medicoes = medicoesResultados
+          .filter((resultado) => resultado.status === 'fulfilled')
+          .flatMap((resultado) => extrairLista(resultado.value, ['dados']))
           .filter(item => Number.isFinite(new Date(String(item.data_hora ?? '').replace(' ', 'T')).getTime()))
           .sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora));
         const ultima = medicoes.at(-1);
@@ -149,8 +159,14 @@ function Dashboard({ onOpenAlarmes }) {
             valorMedido(ultima?.fator_potencia ?? ultima?.fator_de_potencia, 2, ''),
           ][index],
         })));
-        setErro(resMedicoes ? '' : 'N\u00e3o foi poss\u00edvel atualizar as medi\u00e7\u00f5es. Nova tentativa em alguns segundos.');
-        setAtualizadoEm(resMedicoes ? new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
+        setErro(idsPzem.length === 0
+          ? 'Nenhum dispositivo cadastrado para carregar medições.'
+          : medicoesResultados.every((resultado) => resultado.status === 'rejected')
+            ? 'Não foi possível atualizar as medições. Nova tentativa em alguns segundos.'
+            : '');
+        setAtualizadoEm(idsPzem.length > 0
+          ? new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          : '');
       } catch {
         if (controller.signal.aborted) return;
         setErro('Não foi possível atualizar o dashboard. Tentaremos novamente em alguns segundos.');
@@ -170,7 +186,7 @@ function Dashboard({ onOpenAlarmes }) {
       controller.abort();
       clearInterval(intervalo);
     };
-  }, [filtroPeriodo, filtroLocal, filtroSetor, filtroEquipamento, filtroGrandeza]);
+  }, [filtroPeriodo, filtroLocal, filtroSetor, filtroEquipamento, filtroGrandeza, idsPzem]);
 
   return (
     <main className="min-h-screen p-6 text-slate-200 md:p-8 bg-transparent">

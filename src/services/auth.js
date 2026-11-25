@@ -40,3 +40,23 @@ export async function redefinirSenhaUsuario(id, novaSenha) {
   const resposta = await api.patch(`/usuarios/${id}/senha`, { novaSenha });
   return resposta.data;
 }
+
+export async function solicitarRedefinicaoSenha(email) {
+  const resposta = await api.post('/auth/forgot-password', { email });
+  return resposta.data;
+}
+
+export async function redefinirSenhaComToken(token, novaSenha) {
+  const resposta = await api.post('/auth/reset-password', { token, novaSenha });
+  return resposta.data;
+}
+
+export async function redefinirSenhaComCodigo(email, codigo, novaSenha) {
+  const resposta = await api.post('/auth/reset-password-code', {
+    email,
+    codigo,
+    novaSenha,
+  });
+
+  return resposta.data;
+}

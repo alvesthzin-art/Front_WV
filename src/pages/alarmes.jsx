@@ -4,7 +4,7 @@ import AlarmesKpiGrid from '../components/alarmes/alarmesKpiGrid';
 import AlarmesTabela from '../components/alarmes/alarmesTabela';
 import { listarAlarmes, reconhecerAlarme, mensagemErroAlarmes } from '../services/alarmes';
 
-export default function Alarmes() {
+export default function Alarmes({ onVerEquipamento }) {
   const [alertas, setAlertas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
@@ -45,7 +45,13 @@ export default function Alarmes() {
   async function handleReconhecer(id) {
     try {
       await reconhecerAlarme(id);
-      setAlertas(atuais => atuais.map(item => item.id === id ? { ...item, status: 'Reconhecido', reconhecido: true } : item));
+      setAlertas(atuais =>
+        atuais.map(item =>
+          (item.id_alerta || item.id) === id
+            ? { ...item, status: 'Reconhecido', reconhecido: true }
+            : item
+        )
+      );
       setErroAcao('');
       return true;
     } catch (error) {
@@ -56,9 +62,19 @@ export default function Alarmes() {
 
   return (
     <main className="min-h-screen bg-transparent p-6 text-slate-200 md:p-8">
-      {(erro || erroAcao) && <p role="alert" className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">{erro || erroAcao}</p>}
+      {(erro || erroAcao) && (
+        <p role="alert" className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
+          {erro || erroAcao}
+        </p>
+      )}
       <AlarmesKpiGrid kpis={kpis} />
-      <AlarmesTabela alertas={alertas} loading={loading} erro={erro} onReconhecer={handleReconhecer} />
+      <AlarmesTabela
+        alertas={alertas}
+        loading={loading}
+        erro={erro}
+        onReconhecer={handleReconhecer}
+        onVerEquipamento={onVerEquipamento}
+      />
     </main>
   );
 }

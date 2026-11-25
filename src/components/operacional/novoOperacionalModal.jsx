@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 
-export default function NovoOperacionalModal({ tipo, itemInicial = null, locais = [], onClose, onSalvar }) {
+export default function NovoOperacionalModal({ tipo, itemInicial = null, locais = [], setores = [], onClose, onSalvar }) {
   // Ajuste exato e seguro para o singular
   const nomeSingular = tipo === 'Equipamentos' ? 'Equipamento' : tipo === 'Setores' ? 'Setor' : 'Local';
 
@@ -9,7 +9,8 @@ export default function NovoOperacionalModal({ tipo, itemInicial = null, locais 
     ...item,
     nome: item?.nome || '',
     codigo: item?.codigo || (nomeSingular === 'Local' ? 'LOC-JND-05' : nomeSingular === 'Setor' ? 'SET-JND-NOV' : 'ESP32-999'),
-    id_local: item?.id_local ?? locais[0]?.id ?? '',
+    id_local: item?.id_local ?? locais[0]?.id ?? locais[0]?.id_local ?? '',
+    id_setor: item?.id_setor ?? '',
     id_empresa: item?.id_empresa ?? 1,
     local: item?.local || 'Planta Industrial Jandira',
     setor: item?.setor || 'Produção',
@@ -20,6 +21,33 @@ export default function NovoOperacionalModal({ tipo, itemInicial = null, locais 
   });
 
   const [formData, setFormData] = useState(() => criarFormulario(itemInicial));
+
+  const setoresDoLocal = setores.filter(
+    (setor) => !formData.id_local || Number(setor.id_local) === Number(formData.id_local)
+  );
+
+  function trocarLocal(idLocal) {
+    const setorAtual = setores.find((setor) => Number(setor.id_local) === Number(idLocal));
+    setFormData((atual) => ({
+      ...atual,
+      id_local: idLocal,
+      local: locais.find((local) => Number(local.id || local.id_local) === Number(idLocal))?.nome || '',
+      id_setor: setorAtual?.id || setorAtual?.id_setor || '',
+      setor: setorAtual?.nome || '',
+    }));
+  }
+
+  function trocarSetor(idSetor) {
+    const setor = setores.find((item) => Number(item.id || item.id_setor) === Number(idSetor));
+    const local = locais.find((item) => Number(item.id || item.id_local) === Number(setor?.id_local));
+    setFormData((atual) => ({
+      ...atual,
+      id_setor: idSetor,
+      setor: setor?.nome || '',
+      id_local: local?.id || local?.id_local || atual.id_local,
+      local: local?.nome || atual.local,
+    }));
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -81,21 +109,33 @@ export default function NovoOperacionalModal({ tipo, itemInicial = null, locais 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">Local</label>
-                <input
-                  type="text"
-                  value={formData.local}
-                  onChange={(e) => setFormData({ ...formData, local: e.target.value })}
+                <select
+                  required
+                  value={formData.id_local}
+                  onChange={(e) => trocarLocal(e.target.value)}
                   className="w-full rounded-xl border border-slate-800 bg-[#070D18] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600"
-                />
+                >
+                  <option value="">Selecione um local</option>
+                  {locais.map((local) => {
+                    const idLocal = local.id || local.id_local;
+                    return <option key={idLocal} value={idLocal}>{local.nome}</option>;
+                  })}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">Setor</label>
-                <input
-                  type="text"
-                  value={formData.setor}
-                  onChange={(e) => setFormData({ ...formData, setor: e.target.value })}
+                <select
+                  required
+                  value={formData.id_setor}
+                  onChange={(e) => trocarSetor(e.target.value)}
                   className="w-full rounded-xl border border-slate-800 bg-[#070D18] px-3.5 py-2.5 text-xs text-slate-200 outline-none focus:border-blue-600"
-                />
+                >
+                  <option value="">Selecione um setor</option>
+                  {setoresDoLocal.map((setor) => {
+                    const idSetor = setor.id || setor.id_setor;
+                    return <option key={idSetor} value={idSetor}>{setor.nome}</option>;
+                  })}
+                </select>
               </div>
             </div>
           )}

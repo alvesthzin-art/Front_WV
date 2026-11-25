@@ -5,6 +5,9 @@ import {
   Pencil,
   X,
   Save,
+  Trash2,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import api from '../../services/api';
 import { redefinirSenhaUsuario } from '../../services/auth';
@@ -31,14 +34,20 @@ const labelClass =
   const [formulario, setFormulario] = useState(formularioInicial);
   const [mensagem, setMensagem] = useState('');
   const [carregando, setCarregando] = useState(true);
+  const [locais, setLocais] = useState([]);
+  const [setores, setSetores] = useState([]);
+  const [locaisSelecionados, setLocaisSelecionados] = useState([]);
+  const [locaisAberto, setLocaisAberto] = useState(false);
 
   useEffect(() => {
     let montado = true;
 
-    api.get('/usuarios')
-      .then((resposta) => {
+    Promise.all([api.get('/usuarios'), api.get('/locais'), api.get('/setores')])
+      .then(([usuariosResposta, locaisResposta, setoresResposta]) => {
         if (!montado) return;
-        setUsuarios((resposta.data?.dados || []).map((usuario) => ({
+        setLocais(locaisResposta.data?.dados || []);
+        setSetores(setoresResposta.data?.dados || []);
+        setUsuarios((usuariosResposta.data?.dados || []).map((usuario) => ({
           ...usuario,
           local: usuario.perfil === 'Administrador' ? 'Acesso global' : 'Consultar autorizações',
           ultimoAcesso: usuario.ultimo_acesso
@@ -68,10 +77,12 @@ const labelClass =
     setFormulario(formularioInicial);
     setEditandoId(null);
     setMensagem('');
+    setLocaisSelecionados([]);
+    setLocaisAberto(false);
     setMostrarFormulario(true);
   }
 
-  function abrirEdicao(usuario) {
+  async function abrirEdicao(usuario) {
     setFormulario({
       id_empresa: usuario.id_empresa,
       nome: usuario.nome,
@@ -83,13 +94,26 @@ const labelClass =
 
     setEditandoId(usuario.id);
     setMensagem('');
+    setLocaisSelecionados([]);
+    setLocaisAberto(false);
     setMostrarFormulario(true);
+
+    if (usuario.perfil === 'Gestor') {
+      try {
+        const resposta = await api.get(`/usuarios/${usuario.id}/locais`);
+        setLocaisSelecionados((resposta.data?.dados || []).map((item) => Number(item.id_local)));
+      } catch (error) {
+        setMensagem(error.response?.data?.mensagem || 'Não foi possível carregar os locais autorizados.');
+      }
+    }
   }
 
   function cancelarFormulario() {
     setMostrarFormulario(false);
     setEditandoId(null);
     setFormulario(formularioInicial);
+    setLocaisSelecionados([]);
+    setLocaisAberto(false);
     setMensagem('');
   }
 
@@ -128,6 +152,13 @@ const labelClass =
         ? await api.put(`/usuarios/${editandoId}`, dados)
         : await api.post('/usuarios', { ...dados, senha: formulario.senha });
       const usuarioSalvo = resposta.data?.dados;
+      const idUsuarioSalvo = editandoId ?? usuarioSalvo?.id;
+
+      if (formulario.perfil === 'Gestor' && idUsuarioSalvo) {
+        await api.put(`/usuarios/${idUsuarioSalvo}/locais`, {
+          ids_locais: locaisSelecionados,
+        });
+      }
 
       if (editandoId !== null) {
         setUsuarios((atuais) => atuais.map((usuario) => usuario.id === editandoId
@@ -147,6 +178,28 @@ const labelClass =
     }
   }
 
+  function alternarLocal(idLocal) {
+    setLocaisSelecionados((atuais) => atuais.includes(idLocal)
+      ? atuais.filter((id) => id !== idLocal)
+      : [...atuais, idLocal]);
+  }
+
+  function selecionarTodosLocais() {
+    setLocaisSelecionados(locaisDaEmpresa.map((local) => Number(local.id)));
+  }
+
+  function limparLocais() {
+    setLocaisSelecionados([]);
+  }
+
+  const locaisDaEmpresa = locais.filter(
+    (local) => Number(local.id_empresa) === Number(formulario.id_empresa) && local.status !== 'Inativo'
+  );
+
+  const nomesLocaisSelecionados = locaisDaEmpresa
+    .filter((local) => locaisSelecionados.includes(Number(local.id)))
+    .map((local) => local.nome);
+
   async function redefinirSenha(usuario) {
     const novaSenha = window.prompt(`Digite uma nova senha para ${usuario.email} (mínimo de 8 caracteres):`);
     if (novaSenha === null) return;
@@ -160,6 +213,23 @@ const labelClass =
       setMensagem(`Senha redefinida para ${usuario.email}.`);
     } catch (error) {
       setMensagem(error.response?.data?.mensagem || 'Não foi possível redefinir a senha.');
+    }
+  }
+
+  async function excluirUsuario(usuario) {
+    if (usuario.perfil !== 'Gestor') {
+      setMensagem('Somente usuários Gestor podem ser excluídos.');
+      return;
+    }
+
+    if (!window.confirm(`Deseja excluir o usuário ${usuario.nome}?`)) return;
+
+    try {
+      await api.delete(`/usuarios/${usuario.id}`);
+      setUsuarios((atuais) => atuais.filter((item) => item.id !== usuario.id));
+      setMensagem(`Usuário ${usuario.email} removido com sucesso.`);
+    } catch (error) {
+      setMensagem(error.response?.data?.mensagem || 'Não foi possível excluir o usuário.');
     }
   }
 
@@ -278,6 +348,62 @@ const labelClass =
                 <option value="Inativo">Inativo</option>
               </select>
             </div>
+
+            {formulario.perfil === 'Gestor' && (
+              <div className="relative md:col-span-2">
+                <label className={labelClass}>Locais e setores associados</label>
+                <button
+                  type="button"
+                  onClick={() => setLocaisAberto((aberto) => !aberto)}
+                  className={`${inputClass} flex items-center justify-between text-left`}
+                >
+                  <span className={nomesLocaisSelecionados.length ? 'text-[#C0C5C8]' : 'text-[#68717C]'}>
+                    {nomesLocaisSelecionados.length
+                      ? `${nomesLocaisSelecionados.length} local(is) selecionado(s)`
+                      : 'Selecionar locais...'}
+                  </span>
+                  <ChevronDown size={15} className="shrink-0 text-[#8FA6C8]" />
+                </button>
+
+                {locaisAberto && (
+                  <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-[#17315F] bg-[#0C1423] p-2 shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-[#17315F] px-2 pb-2 text-[11px]">
+                      <span className="uppercase tracking-wide text-[#68717C]">Locais disponíveis</span>
+                      <div className="flex gap-3">
+                        <button type="button" onClick={selecionarTodosLocais} className="font-semibold text-[#5A8FDE] hover:text-white">Selecionar todos</button>
+                        <button type="button" onClick={limparLocais} className="text-[#9ca1a6] hover:text-white">Limpar</button>
+                      </div>
+                    </div>
+
+                    {locaisDaEmpresa.map((local) => {
+                      const idLocal = Number(local.id);
+                      const selecionado = locaisSelecionados.includes(idLocal);
+                      const setoresDoLocal = setores.filter((setor) => Number(setor.id_local) === idLocal && setor.status !== 'Inativo');
+
+                      return (
+                        <label key={local.id} className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-2.5 hover:bg-[#111D31]">
+                          <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selecionado ? 'border-[#4D84E8] bg-[#2853A0] text-white' : 'border-[#38557D] bg-[#070A15]'}`}>
+                            {selecionado && <Check size={12} />}
+                            <input type="checkbox" className="sr-only" checked={selecionado} onChange={() => alternarLocal(idLocal)} />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-xs font-medium text-[#C0C5C8]">{local.nome}</span>
+                            {setoresDoLocal.length > 0 && (
+                              <span className="mt-1 block text-[10px] text-[#8291A8]">
+                                Setores: {setoresDoLocal.map((setor) => setor.nome).join(', ')}
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      );
+                    })}
+
+                    {locaisDaEmpresa.length === 0 && <p className="px-2 py-5 text-xs text-[#68717C]">Nenhum local ativo encontrado para esta empresa.</p>}
+                  </div>
+                )}
+                <p className="mt-1.5 text-[10px] text-[#68717C]">Os setores exibidos pertencem aos locais selecionados e acompanham essa autorização.</p>
+              </div>
+            )}
           </div>
 
           {mensagem && (
@@ -388,6 +514,17 @@ const labelClass =
                     >
                       <Save size={14} />
                     </button>
+
+                    {usuario.perfil === 'Gestor' && (
+                      <button
+                        type="button"
+                        onClick={() => excluirUsuario(usuario)}
+                        aria-label={`Excluir ${usuario.nome}`}
+                        className="text-[#C77C7C] hover:text-red-300"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

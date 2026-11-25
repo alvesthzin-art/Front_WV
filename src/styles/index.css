@@ -425,6 +425,22 @@ html[data-theme='light'] .theme-app [role='dialog'] button[aria-pressed='true'] 
   color: #ffffff !important;
 }
 
+html[data-theme='light'] .theme-app .wv-pontos-trigger {
+  background: #1d4ed8 !important;
+  border-color: #1e40af !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-app .wv-pontos-trigger svg {
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] .theme-app .wv-pontos-modal {
+  background: #ffffff !important;
+  border-color: #cbd8e7 !important;
+  color: #111827 !important;
+}
+
 html[data-theme='light'] .theme-app [role='dialog'] button:hover:not([class*='bg-blue']):not([aria-pressed='true']) {
   background: #e8f1ff !important;
   color: #0f2f65 !important;

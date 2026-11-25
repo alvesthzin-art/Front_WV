@@ -7,6 +7,7 @@ import CardMedicao from '../components/medicoes/cardMedicao';
 import CardMetaMedicao from '../components/medicoes/cardMetaMedicao';
 import TensaoAoLongoDoTempo from '../components/medicoes/tensaoAoLongoDoTempo';
 import DadosBrutosModal from '../components/medicoes/dadosBrutos';
+import PontosMedicaoModal from '../components/medicoes/pontosMedicaoModal';
 import api from '../services/api';
 
 const HORAS_POR_PERIODO = {
@@ -35,6 +36,7 @@ function extrairLista(res) {
 
 export default function Medicao() {
   const [modalAberto, setModalAberto] = useState(false);
+  const [pontosModalAberto, setPontosModalAberto] = useState(false);
   const [dadosMedicoes, setDadosMedicoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -43,6 +45,7 @@ export default function Medicao() {
   const [setores, setSetores] = useState([]);
   const [equipamentos, setEquipamentos] = useState([]);
   const [pontosMedicao, setPontosMedicao] = useState([]);
+  const [pzems, setPzems] = useState([]);
 
   const [filtros, setFiltros] = useState({
     id_local: '',
@@ -60,12 +63,13 @@ export default function Medicao() {
     let ativo = true;
 
     async function carregarEstrutura() {
-      const [resLocais, resSetores, resEquipamentos, resPontos] =
+      const [resLocais, resSetores, resEquipamentos, resPontos, resPzems] =
         await Promise.all([
           api.get('/locais').catch(() => ({ data: [] })),
           api.get('/setores').catch(() => ({ data: [] })),
           api.get('/equipamentos').catch(() => ({ data: [] })),
           api.get('/pontos-medicao').catch(() => ({ data: [] })),
+          api.get('/pzems').catch(() => ({ data: [] })),
         ]);
 
       if (!ativo) return;
@@ -74,6 +78,7 @@ export default function Medicao() {
       setSetores(extrairLista(resSetores));
       setEquipamentos(extrairLista(resEquipamentos));
       setPontosMedicao(extrairLista(resPontos));
+      setPzems(extrairLista(resPzems));
     }
 
     carregarEstrutura();
@@ -90,11 +95,12 @@ export default function Medicao() {
       Boolean(filtros.id_equipamento);
 
     if (!temFiltro) {
-      const todos = pontosMedicao.map((p) => Number(p.id_pzem)).filter(Boolean);
-      return todos.length > 0 ? [...new Set(todos)] : [1];
+      const todos = pzems.map((p) => Number(p.id)).filter(Boolean);
+      return [...new Set(todos)];
     }
 
-    const pontosFiltrados = pontosMedicao.filter((ponto) => {
+    const pzemsFiltrados = pzems.filter((pzem) => {
+      const ponto = pontosMedicao.find((item) => Number(item.id) === Number(pzem.id_ponto_medicao)) || pzem;
       const equip = equipamentos.find(
         (e) => Number(e.id_equipamento || e.id) === Number(ponto.id_equipamento)
       );
@@ -124,13 +130,14 @@ export default function Medicao() {
     });
 
     return [
-      ...new Set(pontosFiltrados.map((p) => Number(p.id_pzem)).filter(Boolean)),
+      ...new Set(pzemsFiltrados.map((p) => Number(p.id)).filter(Boolean)),
     ];
   }, [
     filtros.id_local,
     filtros.id_setor,
     filtros.id_equipamento,
     pontosMedicao,
+    pzems,
     equipamentos,
     setores,
   ]);
@@ -269,6 +276,7 @@ export default function Medicao() {
           filtros={filtros}
           onFiltrosChange={setFiltros}
           onDefinirMeta={() => setModalAberto(true)}
+          onAbrirPontos={() => setPontosModalAberto(true)}
         />
       </div>
 
@@ -328,6 +336,10 @@ export default function Medicao() {
 
       {modalAberto && (
         <MedicoesAlarmesModal onClose={() => setModalAberto(false)} />
+      )}
+
+      {pontosModalAberto && (
+        <PontosMedicaoModal onClose={() => setPontosModalAberto(false)} />
       )}
     </main>
   );
