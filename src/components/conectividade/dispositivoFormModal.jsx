@@ -371,6 +371,7 @@ function DispositivoFormModal({
 
   const inputClass =
     'w-full px-3.5 py-2.5 rounded-xl bg-[#070A15] border border-[#17315F]/60 text-sm text-[#C0C5C8] placeholder-[#4A525B] focus:outline-none focus:border-[#2C57A8]';
+  const campoTecnicoClass = `${inputClass} cursor-not-allowed opacity-70`;
   const selectAssociacaoClass = `${inputClass} ${
     isEdicao ? 'opacity-60 cursor-not-allowed bg-slate-900/50' : ''
   }`;
@@ -441,8 +442,8 @@ function DispositivoFormModal({
                   required
                   placeholder="WV-ESP32-0005"
                   value={form.numeroSerie}
-                  onChange={(e) => handleChange('numeroSerie', e.target.value)}
-                  className={inputClass}
+                  readOnly
+                  className={campoTecnicoClass}
                 />
               </div>
               <div className="sm:col-span-2">
@@ -452,8 +453,8 @@ function DispositivoFormModal({
                   required
                   placeholder="24:6F:28:A1:0B:05"
                   value={form.macAddress}
-                  onChange={(e) => handleChange('macAddress', e.target.value)}
-                  className={inputClass}
+                  readOnly
+                  className={campoTecnicoClass}
                 />
               </div>
               <div>
@@ -461,8 +462,8 @@ function DispositivoFormModal({
                 <input
                   type="text"
                   value={form.firmware}
-                  onChange={(e) => handleChange('firmware', e.target.value)}
-                  className={inputClass}
+                  readOnly
+                  className={campoTecnicoClass}
                 />
               </div>
               <div>
@@ -601,8 +602,8 @@ function DispositivoFormModal({
                   required
                   placeholder="WattVisionWiFi"
                   value={form.ssid}
-                  onChange={(e) => handleChange('ssid', e.target.value)}
-                  className={inputClass}
+                  readOnly
+                  className={campoTecnicoClass}
                 />
               </div>
               <div>
@@ -612,8 +613,8 @@ function DispositivoFormModal({
                   required
                   placeholder="192.168.1.42"
                   value={form.ipEstatico}
-                  onChange={(e) => handleChange('ipEstatico', e.target.value)}
-                  className={inputClass}
+                  readOnly
+                  className={campoTecnicoClass}
                 />
               </div>
               <div>
@@ -622,8 +623,8 @@ function DispositivoFormModal({
                   type="text"
                   required
                   value={form.broker}
-                  onChange={(e) => handleChange('broker', e.target.value)}
-                  className={inputClass}
+                  readOnly
+                  className={campoTecnicoClass}
                 />
               </div>
               <div>
@@ -632,8 +633,8 @@ function DispositivoFormModal({
                   type="text"
                   required
                   value={form.porta}
-                  onChange={(e) => handleChange('porta', e.target.value)}
-                  className={inputClass}
+                  readOnly
+                  className={campoTecnicoClass}
                 />
               </div>
               <div>
@@ -642,8 +643,8 @@ function DispositivoFormModal({
                   type="text"
                   required
                   value={form.topico}
-                  onChange={(e) => handleChange('topico', e.target.value)}
-                  className={inputClass}
+                  readOnly
+                  className={campoTecnicoClass}
                 />
               </div>
               <div>
@@ -652,8 +653,8 @@ function DispositivoFormModal({
                   type="text"
                   placeholder="esp32-005"
                   value={form.clientId}
-                  onChange={(e) => handleChange('clientId', e.target.value)}
-                  className={inputClass}
+                  readOnly
+                  className={campoTecnicoClass}
                 />
               </div>
             </div>
@@ -665,8 +666,8 @@ function DispositivoFormModal({
               <label className={labelClass}>Intervalo de transmissão</label>
               <select
                 value={form.intervalo}
-                onChange={(e) => handleChange('intervalo', e.target.value)}
-                className={inputClass}
+                disabled
+                className={campoTecnicoClass}
               >
                 <option value="5s">5 segundos</option>
                 <option value="10s">10 segundos</option>
