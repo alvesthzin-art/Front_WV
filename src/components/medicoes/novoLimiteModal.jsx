@@ -150,30 +150,9 @@ export default function NovoLimiteModal({
       grandezas.find((item) => item.valor === grandeza) || grandezas[0];
     const idNumerico = Number(entidade);
 
-    const payloadApi = {
-      descricao: descricao.trim(),
-      grandeza: grandezaObj.apiValor,
-      operador,
-      valor: Number(valor),
-      severidade: MAPA_SEVERIDADE_API[severidade] || 'atencao',
-      periodo_inicial: periodoInicial || null,
-      periodo_final: periodoFinal || null,
-      ativa: limiteAtivo ? 1 : 0,
-      id_equipamento: escopo === 'Equipamento' ? idNumerico : null,
-      id_setor: escopo === 'Setor' ? idNumerico : null,
-      id_local: escopo === 'Local' ? idNumerico : null,
-    };
-
     try {
-      let resposta;
-      if (itemEdicao?.id_limite || itemEdicao?.id) {
-        const idLimite = itemEdicao.id_limite || itemEdicao.id;
-        resposta = await api.put(`/limites/${idLimite}`, payloadApi);
-      } else {
-        resposta = await api.post('/limites', payloadApi);
-      }
-
-      // Notifica o componente pai com os dados salvos e fecha o modal
+      // O componente pai é o único responsável por persistir a meta.
+      // Isso evita o POST/PUT duplicado quando o formulário é submetido.
       await onSalvar?.({
         escopo,
         entidade,
@@ -185,8 +164,8 @@ export default function NovoLimiteModal({
         periodoFinal,
         descricao,
         limiteAtivo,
-        payloadApi,
-        resposta: resposta?.data,
+        grandezaApi: grandezaObj.apiValor,
+        entidadeId: idNumerico,
       });
 
       onFechar?.();

@@ -9,6 +9,7 @@ import CalculoButton from "../components/dashboard/calculoButton";
 import api from '../services/api';
 import { converterTarifaEnergia, lerTarifaEnergia } from '../services/tarifaEnergia';
 import { listarAlarmes } from '../services/alarmes';
+import { verificarMedicaoECriarAlarme } from '../services/alertaService';
 
 import {
   calcularIndicadoresGrandeza,
@@ -100,11 +101,29 @@ function Dashboard({ onOpenAlarmes }) {
         .filter((ponto) => idsEquipamentos.has(Number(ponto.id_equipamento)))
         .map((ponto) => Number(ponto.id)));
       const pzems = extrairLista(resPzems, ['dados', 'pzems']);
+      const pontos = extrairLista(resPontos, ['dados', 'pontos']);
       setMedidores([...new Map(pzems
         .filter((pzem) => String(pzem.status || 'Ativo').toLowerCase() === 'ativo'
           && Number(pzem.id) > 0
           && pontosVinculados.has(Number(pzem.id_ponto_medicao)))
-        .map((pzem) => [Number(pzem.id), { ...pzem, id: Number(pzem.id) }])).values()]);
+        .map((pzem) => [
+          Number(pzem.id),
+          {
+            ...pzem,
+            id: Number(pzem.id),
+            ...(() => {
+              const ponto = pontos.find(
+              (ponto) => Number(ponto.id) === Number(pzem.id_ponto_medicao)
+              );
+              return {
+                id_dispositivo_iot: ponto?.id_dispositivo_iot,
+                id_equipamento: ponto?.id_equipamento,
+                id_setor: ponto?.id_setor,
+                id_local: ponto?.id_local,
+              };
+            })(),
+          },
+        ])).values()]);
 
       setOpcoesFiltros((atuais) => ({
         ...atuais,
@@ -181,6 +200,18 @@ function Dashboard({ onOpenAlarmes }) {
             : '—';
 
         setDadosMedicoes(medicoes);
+        const ultimaMedicao = medicoes.at(-1);
+        if (ultimaMedicao) {
+          const medidorAtual = medidores.find(
+            (medidor) => Number(medidor.id) === Number(ultimaMedicao.id_pzem)
+          );
+          void verificarMedicaoECriarAlarme(ultimaMedicao, {
+            id_dispositivo_iot: medidorAtual?.id_dispositivo_iot,
+            id_equipamento: medidorAtual?.id_equipamento,
+            id_setor: medidorAtual?.id_setor,
+            id_local: medidorAtual?.id_local,
+          });
+        }
         setAlertas(alarmes);
         setAlarmesIndisponiveis(alertasResult.status === 'rejected');
         setSummaryCards(summaryCardsFallback.map((card, index) => ({

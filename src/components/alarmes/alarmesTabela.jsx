@@ -72,10 +72,41 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer, onVerEquipamento 
         item?.id_usuario_reconhecimento
     );
 
+  const obterDataAlarme = (item) => {
+    const valor = item.data_hora || item.data_criacao || item.inicio;
+    if (!valor) return null;
+
+    const data = new Date(String(valor).replace(' ', 'T'));
+    return Number.isNaN(data.getTime()) ? null : data;
+  };
+
+  const correspondePeriodoHistorico = (item) => {
+    if (activeTab !== 'historico' || subFiltroHistorico === 'Personalizado') {
+      return true;
+    }
+
+    const dataAlarme = obterDataAlarme(item);
+    if (!dataAlarme) return false;
+
+    const agora = new Date();
+    if (subFiltroHistorico === 'Hoje') {
+      const inicioHoje = new Date(agora);
+      inicioHoje.setHours(0, 0, 0, 0);
+      return dataAlarme >= inicioHoje && dataAlarme <= agora;
+    }
+
+    const dias = subFiltroHistorico === '7 dias' ? 7 : 30;
+    const inicioPeriodo = new Date(agora);
+    inicioPeriodo.setDate(inicioPeriodo.getDate() - dias);
+    return dataAlarme >= inicioPeriodo && dataAlarme <= agora;
+  };
+
   // Filtragem dos alarmes na tabela
   const alarmesFiltrados = alertas.filter((item) => {
     const isResolvido = item.status === 'Resolvido' || item.status === 'inativo';
-    const isTabMatch = activeTab === 'ativos' ? !isResolvido : isResolvido;
+    // Ativos mostra somente ocorrências abertas; Histórico mostra todas as
+    // ocorrências do período selecionado, inclusive as recém-geradas.
+    const isTabMatch = activeTab === 'ativos' ? !isResolvido : true;
 
     const titulo = getTitulo(item).toLowerCase();
     const equip = getEquipamento(item).toLowerCase();
@@ -88,7 +119,13 @@ function AlarmesTabela({ alertas, loading, erro, onReconhecer, onVerEquipamento 
     const isCategoriaMatch =
       filtroCategoria === 'Todos' || getCategoria(item) === filtroCategoria;
 
-    return isTabMatch && isSearchMatch && isSeveridadeMatch && isCategoriaMatch;
+    return (
+      isTabMatch &&
+      correspondePeriodoHistorico(item) &&
+      isSearchMatch &&
+      isSeveridadeMatch &&
+      isCategoriaMatch
+    );
   });
 
   const totalPaginas = Math.max(

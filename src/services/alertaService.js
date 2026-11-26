@@ -47,9 +47,6 @@ export async function verificarMedicaoECriarAlarme(medicao, contexto = {}) {
     const idLocal = contexto.id_local ?? medicao.id_local;
 
     for (const limite of limites) {
-      // 'meta' é apenas linha visual no gráfico, não gera alarme
-      if (limite.severidade === 'meta') continue;
-
       const mesmoEscopo =
         (limite.id_equipamento && Number(limite.id_equipamento) === Number(idEquip)) ||
         (limite.id_setor && Number(limite.id_setor) === Number(idSetor)) ||
@@ -64,14 +61,22 @@ export async function verificarMedicaoECriarAlarme(medicao, contexto = {}) {
 
       if (!avaliarCondicao(valorMedido, limite.operador, limite.valor)) continue;
 
-      const chaveUnica = `${limite.id_limite}-${medicao.id_medicao || medicao.data_hora}`;
+      const idLimite = limite.id_limite ?? limite.id;
+      const idMedicao = medicao.id_medicao ?? medicao.id ?? medicao.data_hora;
+      const idDispositivo = contexto.id_dispositivo_iot ?? medicao.id_dispositivo_iot;
+
+      // O banco exige um dispositivo real. Nunca associe um alarme a um ID
+      // fixo, pois isso mascara medições sem equipamento cadastrado.
+      if (!idDispositivo) continue;
+
+      const chaveUnica = `${idLimite}-${idMedicao}`;
       if (alertasDisparados.has(chaveUnica)) continue;
 
       await api.post('/alertas', {
         id_tipo_alerta: 1,
-        id_limite: limite.id_limite,
-        id_dispositivo_iot: contexto.id_dispositivo_iot || medicao.id_dispositivo_iot || 1,
-        id_medicao: medicao.id_medicao || null,
+        id_limite: idLimite,
+        id_dispositivo_iot: idDispositivo,
+        id_medicao: medicao.id_medicao ?? medicao.id ?? null,
         valor_detectado: Number(valorMedido),
         valor_limite: Number(limite.valor),
         severidade: limite.severidade || 'atencao',

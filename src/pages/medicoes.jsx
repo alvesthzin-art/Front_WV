@@ -9,6 +9,7 @@ import TensaoAoLongoDoTempo from '../components/medicoes/tensaoAoLongoDoTempo';
 import DadosBrutosModal from '../components/medicoes/dadosBrutos';
 import PontosMedicaoModal from '../components/medicoes/pontosMedicaoModal';
 import api from '../services/api';
+import { verificarMedicaoECriarAlarme } from '../services/alertaService';
 
 const HORAS_POR_PERIODO = {
   Hoje: 24,
@@ -179,6 +180,25 @@ export default function Medicao() {
           );
 
         setDadosMedicoes(ordenados);
+        const ultimaMedicao = ordenados.at(-1);
+        if (ultimaMedicao) {
+          const pzemAtual = pzems.find((item) => Number(item.id) === Number(ultimaMedicao.id_pzem));
+          const pontoAtual = pontosMedicao.find(
+            (item) => Number(item.id) === Number(pzemAtual?.id_ponto_medicao ?? ultimaMedicao.id_ponto_medicao)
+          );
+          const equipamentoAtual = equipamentos.find(
+            (item) => Number(item.id_equipamento ?? item.id) === Number(pontoAtual?.id_equipamento)
+          );
+          const setorAtual = setores.find(
+            (item) => Number(item.id_setor ?? item.id) === Number(pontoAtual?.id_setor ?? equipamentoAtual?.id_setor)
+          );
+          void verificarMedicaoECriarAlarme(ultimaMedicao, {
+            id_dispositivo_iot: pontoAtual?.id_dispositivo_iot,
+            id_equipamento: pontoAtual?.id_equipamento,
+            id_setor: pontoAtual?.id_setor ?? equipamentoAtual?.id_setor,
+            id_local: pontoAtual?.id_local ?? setorAtual?.id_local,
+          });
+        }
         setErro('');
       } catch (error) {
         console.error('Erro ao carregar medições:', error);

@@ -1,5 +1,7 @@
 import api from './api';
 
+let contextoCache = { expiraEm: 0, dados: null };
+
 function credenciais() {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
@@ -30,7 +32,68 @@ export async function listarAlarmes(signal) {
   const dados = resposta.data;
   const lista = Array.isArray(dados) ? dados : dados?.dados ?? dados?.alertas;
   if (!Array.isArray(lista)) throw new Error('Resposta de alarmes inv\u00e1lida.');
-  return lista.map(normalizarAlarme);
+  const agora = Date.now();
+  if (!contextoCache.dados || contextoCache.expiraEm <= agora) {
+    const extrairLista = respostaContexto => {
+      if (Array.isArray(respostaContexto?.data)) return respostaContexto.data;
+      return respostaContexto?.data?.dados || respostaContexto?.data?.data || [];
+    };
+
+    const respostas = await Promise.allSettled([
+      api.get('/limites', { ...credenciais(), signal }),
+      api.get('/dispositivos-iot', { ...credenciais(), signal }),
+      api.get('/pontos-medicao', { ...credenciais(), signal }),
+      api.get('/equipamentos', { ...credenciais(), signal }),
+      api.get('/setores', { ...credenciais(), signal }),
+      api.get('/locais', { ...credenciais(), signal }),
+    ]);
+
+    contextoCache = {
+      expiraEm: agora + 30000,
+      dados: {
+        limites: extrairLista(respostas[0].status === 'fulfilled' ? respostas[0].value : null),
+        dispositivos: extrairLista(respostas[1].status === 'fulfilled' ? respostas[1].value : null),
+        pontos: extrairLista(respostas[2].status === 'fulfilled' ? respostas[2].value : null),
+        equipamentos: extrairLista(respostas[3].status === 'fulfilled' ? respostas[3].value : null),
+        setores: extrairLista(respostas[4].status === 'fulfilled' ? respostas[4].value : null),
+        locais: extrairLista(respostas[5].status === 'fulfilled' ? respostas[5].value : null),
+      },
+    };
+  }
+
+  const contexto = contextoCache.dados;
+  const porId = (lista, id) => lista.find(item => Number(item.id) === Number(id));
+
+  return lista.map(item => {
+    const limite = porId(contexto.limites, item.id_limite);
+    const ponto = porId(contexto.pontos, item.id_ponto_medicao) || contexto.pontos.find(
+      pontoAtual => Number(pontoAtual.id_dispositivo_iot) === Number(item.id_dispositivo_iot),
+    );
+    const equipamento = porId(
+      contexto.equipamentos,
+      limite?.id_equipamento || ponto?.id_equipamento,
+    );
+    const setor = porId(
+      contexto.setores,
+      limite?.id_setor || ponto?.id_setor || equipamento?.id_setor,
+    );
+    const local = porId(
+      contexto.locais,
+      limite?.id_local || ponto?.id_local || setor?.id_local,
+    );
+    const dispositivo = porId(contexto.dispositivos, item.id_dispositivo_iot);
+
+    return normalizarAlarme({
+      ...item,
+      titulo: item.titulo || limite?.descricao || item.tipo_alerta,
+      nome_equipamento:
+        item.nome_equipamento || equipamento?.nome || ponto?.nome_equipamento ||
+        dispositivo?.identificador,
+      local: item.local || local?.nome || setor?.nome_local,
+      id_limite: item.id_limite ?? limite?.id,
+      descricao_limite: limite?.descricao,
+    });
+  });
 }
 
 export function mensagemErroAlarmes(erro) {
